@@ -135,7 +135,7 @@ int tinycl_get_command(void)
   {
     int c = tinycl_get_char();
     if (c < 0) return 0;
-    if (c == '\r')
+    if ((c == '\r') || (c == '\n'))
     {
       tinycl_command_buffer[tinycl_cur_char]='\000';
       if (!tinycl_do_checksum)
@@ -320,4 +320,3 @@ int tinycl_task(int num_cmd, const tinycl_command *tc, void *v)
   tcmd->tc(i,tinycl_parameter_buffer,v);
   return 1;
 }
-

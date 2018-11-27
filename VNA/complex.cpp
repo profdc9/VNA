@@ -66,7 +66,7 @@ float Complex::absv()
 
 float Complex::arg()
 {
-	return atan2(imag, real);
+	return atan2f(imag, real);
 }
 
 void Complex::polar(float modulus, float phase)
@@ -107,6 +107,14 @@ Complex Complex::operator-(const Complex &val) const
 	c.real = real - val.real;
 	c.imag = imag - val.imag;
 	return c;
+}
+
+Complex Complex::operator-() const
+{
+  Complex c;
+  c.real = - real;
+  c.imag = - imag;
+  return c;
 }
 
 Complex Complex::operator*(const Complex &val) const
@@ -168,4 +176,3 @@ bool Complex::operator!=(const Complex &val)
 {
 	return ((real != val.real) || (imag != val.imag));
 }
-

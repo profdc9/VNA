@@ -25,7 +25,7 @@ freely, subject to the following restrictions:
 #define TINYCL_MAX_PARAMETERS 4
 #define TINYCL_COMMAND_BUFFER 80
 
-typedef enum { TINYCL_PARM_END, TINYCL_PARM_BOOL, TINYCL_PARM_INT, TINYCL_PARM_STR } tinycl_parmtype;
+typedef enum { TINYCL_PARM_END=0, TINYCL_PARM_BOOL, TINYCL_PARM_INT, TINYCL_PARM_STR } tinycl_parmtype;
 
 typedef struct _tinycl_bool
 {

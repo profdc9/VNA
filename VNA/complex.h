@@ -51,6 +51,7 @@ class Complex
 	
 	Complex operator+(const Complex &val) const;
 	Complex operator-(const Complex &val) const;
+  Complex operator-() const;
 	Complex operator*(const Complex &val) const;
 	Complex operator/(const Complex &val) const;
 	Complex operator+(float val) const;
