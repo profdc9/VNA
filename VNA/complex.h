@@ -47,7 +47,10 @@ class Complex
 	float arg();
 	float absv();
   Complex recip() const;
+  Complex conj() const;
   Complex parallel(const Complex &cmplx) const;
+  Complex bilinear(const Complex &val) const;
+  Complex bilinear(float val) const;
 	
 	Complex operator+(const Complex &val) const;
 	Complex operator-(const Complex &val) const;

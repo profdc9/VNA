@@ -7,6 +7,7 @@
 #include "tinycl.h"
 #include "debugmsg.h"
 #include "complex.h"
+#include "flashstruct.h"
 
 #define IFCLOCK_PIN PB15
 #define IFCLOCK_PIN_CTR PA15
@@ -37,7 +38,7 @@ volatile short sampCUR, sampVOLT, sampCUR2;
 volatile int number_to_sum = 256;
 volatile int current_summed = 0;
 
-volatile int sampCURI, sampVOLTI, sampCUR2I;
+volatile int sampCURI, sampVOLTI, sampCUR2I, sampPWR;
 volatile int sampCURQ, sampVOLTQ, sampCUR2Q;
 
 unsigned short analogReadPins(void)
@@ -109,16 +110,21 @@ void ifClockInterrupt(void)
       sampCURI = 0; sampCURQ = 0;
       sampVOLTI = 0; sampVOLTQ = 0;
       sampCUR2I = 0; sampCUR2Q = 0;
+      sampPWR = 0;
     }
     current_summed++;
     timephase[0] = timerval;
     timer_pause(TIMER3);
     timer_set_count(TIMER3, 0);
-    timer_set_reload(TIMER3, diftick / numphases);
-    //    timer_set_compare(TIMER3,1,0);
-    timer_generate_update(TIMER3);
-    curphase = 0;
-    timer_resume(TIMER3);
+    timerval = diftick / numphases;
+    if (timerval > (F_CPU / 200000u)) 
+    { 
+      timer_set_reload(TIMER3, timerval);
+      //    timer_set_compare(TIMER3,1,0);
+      timer_generate_update(TIMER3);
+      curphase = 0;
+      timer_resume(TIMER3);
+    }
   }
 }
 
@@ -149,6 +155,7 @@ void timerContInterrupt(void)
         sampCUR2Q -= sampCUR2;
         break;
     }
+    sampPWR += sampCUR2;
     curphase++;
   }
 }
@@ -187,33 +194,6 @@ void setup() {
   si5351.output_enable(SI5351_CLK1, 1);
 }
 
-int print_cmd(int args, tinycl_parameter *tp, void *v)
-{
-  Serial.print("printing: ");
-  Serial.println(tp[0].ts.str);
-  return 0;
-}
-
-int print2_cmd(int args, tinycl_parameter *tp, void *v)
-{
-  Serial.print("printing 1: ");
-  Serial.println(tp[0].ts.str);
-  Serial.print("printing 2: ");
-  Serial.println(tp[1].ts.str);
-  return 0;
-}
-
-int add_cmd(int args, tinycl_parameter *tp, void *v)
-{
-  Serial.print("adding ");
-  Serial.print(tp[0].ti.i);
-  Serial.print("+");
-  Serial.print(tp[1].ti.i);
-  Serial.print("=");
-  Serial.println(tp[0].ti.i + tp[1].ti.i);
-  return 0;
-}
-
 #define VNA_MAX_FREQS 100
 #define VNA_MIN_FREQ 1000000u
 #define VNA_MAX_FREQ 470000000u
@@ -221,37 +201,35 @@ int add_cmd(int args, tinycl_parameter *tp, void *v)
 #define VNA_NOMINAL_1X_IF_FREQ 10000u
 #define VNA_NOMINAL_3X_IF_FREQ 3333u
 
+
+typedef struct _vna_flash_header
+{
+  unsigned int flash_header_1;
+  unsigned int flash_header_2;
+} vna_flash_header;
+
+const vna_flash_header flash_header = { 0xDEADBEEF, 0xC001ACE5 };
+
+typedef enum { VNA_NO_CALIB = 0, VNA_OPEN, VNA_SHORT, VNA_LOAD, VNA_VALID_CALIB_1PT, VNA_VALID_CALIB_2PT, } vna_calib_state;
+
 typedef struct _vna_acquisition_state
 {
-  int mode;
-  unsigned int nfreqs;
   unsigned int startfreq;
   unsigned int endfreq;
-  unsigned int num_averages;
-  unsigned int timeout;
   unsigned int char_impedance;
-  unsigned int csv;
+  unsigned short num_averages;
+  unsigned short timeout;
+  unsigned short nfreqs;
+  unsigned char csv;
+  vna_calib_state calib_state;
 } vna_acquisition_state;
 
-vna_acquisition_state vna_state = {1, 100u, 3000000u, 30000000u, 64u, 1000u, 50u, 0u };
-
-typedef struct _vna_data_set
-{
-  unsigned int freq[VNA_MAX_FREQS];
-  int vna_p1_volt_i[VNA_MAX_FREQS];
-  int vna_p1_volt_q[VNA_MAX_FREQS];
-  int vna_p1_cur_i[VNA_MAX_FREQS];
-  int vna_p1_cur_q[VNA_MAX_FREQS];
-  int vna_p2_cur_i[VNA_MAX_FREQS];
-  int vna_p2_cur_q[VNA_MAX_FREQS];
-} vna_data_set;
-
-//vna_data_set vna_data;
+vna_acquisition_state vna_state = {3000000u, 30000000u, 50u, 64, 1000, 100, 0, VNA_NO_CALIB };
 
 typedef struct _vna_calib_freq_parm
 {
   Complex b, c, d;
-  Complex z2;
+  Complex z2, i2;
 } vna_calib_freq_parm;
 
 typedef struct _vna_calib_oneport
@@ -259,27 +237,15 @@ typedef struct _vna_calib_oneport
   Complex zo, zs, zt;
 } vna_calib_oneport;
 
-typedef struct _vna_calib_twoport
-{
-  Complex vt, t, it2;
-} vna_calib_twoport;
-
 vna_calib_oneport *vna_1pt = NULL;
-vna_calib_twoport *vna_2pt = NULL;
 
 vna_calib_freq_parm vna_calib[VNA_MAX_FREQS];
-
-typedef enum { VNA_NO_CALIB = 0, VNA_OPEN, VNA_SHORT, VNA_LOAD, VNA_VALID_CALIB_1PT, VNA_VALID_CALIB_2PT, } vna_calib_state;
-
-vna_calib_state calib_state = VNA_NO_CALIB;
 
 void reset_calib_state(void)
 {
   if (vna_1pt != NULL) free(vna_1pt);
-  if (vna_2pt != NULL) free(vna_2pt);
   vna_1pt = NULL;
-  vna_2pt = NULL;
-  calib_state = VNA_NO_CALIB;
+  vna_state.calib_state = VNA_NO_CALIB;
 }
 
 int acquire_sample(unsigned int averages, unsigned int timeout)
@@ -288,7 +254,7 @@ int acquire_sample(unsigned int averages, unsigned int timeout)
   current_summed = 0;
   unsigned int inittime, curtime;
 
-  timeout = timeout * 72000u;
+  timeout = timeout * (F_CPU / 1000u);
   /* wait for previous acquisition to stop */
   inittime = CPU_CYCLES;
   timedout = false;
@@ -359,29 +325,6 @@ typedef int (*vna_acquire_dataset_operation)(
   int cur2q,
   void *v);
 
-int vna_store_dataset_operation(
-  unsigned int n,
-  unsigned int total,
-  unsigned int freq,
-  int volti,
-  int voltq,
-  int curi,
-  int curq,
-  int cur2i,
-  int cur2q,
-  void *va)
-{
-  vna_data_set *v = (vna_data_set *)va;
-  v->freq[n] = freq;
-  v->vna_p1_volt_i[n] = volti;
-  v->vna_p1_volt_q[n] = voltq;
-  v->vna_p1_cur_i[n] = curi;
-  v->vna_p1_cur_q[n] = curq;
-  v->vna_p2_cur_i[n] = cur2i;
-  v->vna_p2_cur_q[n] = cur2q;
-  return 0;
-}
-
 int vna_display_dataset_operation(
   unsigned int n,
   unsigned int total,
@@ -441,7 +384,7 @@ int vna_acquire_dataset(vna_acquisition_state *vs, vna_acquire_dataset_operation
     setup_frequency_acquire(freq);
     if (n == 0)
     {
-      if (acquire_sample(1, vs->timeout) < 0)
+      if (acquire_sample(12, vs->timeout) < 0)
       {
         Serial.println("Acquisition aborted");
         return -1;
@@ -511,7 +454,7 @@ int setacq_cmd(int args, tinycl_parameter* tp, void *v)
   Serial.println(vs->endfreq);
   Serial.print("Number Frequencies = ");
   Serial.println(vs->nfreqs);
-  if (calib_state != VNA_NO_CALIB)
+  if (vna_state.calib_state != VNA_NO_CALIB)
   {
     Serial.println("Calibration state reset");
     reset_calib_state();
@@ -521,7 +464,6 @@ int setacq_cmd(int args, tinycl_parameter* tp, void *v)
 int imacq_cmd(int args, tinycl_parameter* tp, void *v)
 {
   vna_acquisition_state vs;
-  vs.mode = 1;
   vs.nfreqs = tp[0].ti.i;
   vs.startfreq = tp[1].ti.i;
   vs.endfreq = tp[2].ti.i;
@@ -599,19 +541,19 @@ int opencalib_cmd(int args, tinycl_parameter* tp, void *v)
   if ((vna_1pt = (vna_calib_oneport *) malloc(sizeof(vna_calib_oneport) * vs->nfreqs)) == NULL)
   {
     Serial.println("Unable to allocate memory for 1 port calib aborted");
-    calib_state = VNA_NO_CALIB;
+    vna_state.calib_state = VNA_NO_CALIB;
     return -1;
   }
   vna_acquire_dataset(vs, vna_open_dataset_operation, (void *)vna_1pt);
   Serial.println("Open calibration successful");
-  calib_state = VNA_OPEN;
+  vna_state.calib_state = VNA_OPEN;
   return 0;
 }
 
 int shortcalib_cmd(int args, tinycl_parameter* tp, void *v)
 {
   vna_acquisition_state *vs = &vna_state;
-  if (calib_state != VNA_OPEN)
+  if (vna_state.calib_state != VNA_OPEN)
   {
     Serial.println("Short must be after OPEN calibration");
     return -1;
@@ -623,7 +565,7 @@ int shortcalib_cmd(int args, tinycl_parameter* tp, void *v)
   }
   vna_acquire_dataset(vs, vna_short_dataset_operation, (void *)vna_1pt);
   Serial.println("Short calibration successful");
-  calib_state = VNA_SHORT;
+  vna_state.calib_state = VNA_SHORT;
   return 0;
 }
 
@@ -631,7 +573,7 @@ int loadcalib_cmd(int args, tinycl_parameter* tp, void *v)
 {
   int n;
   vna_acquisition_state *vs = &vna_state;
-  if (calib_state != VNA_SHORT)
+  if (vna_state.calib_state != VNA_SHORT)
   {
     Serial.println("Load must be after SHORT calibration");
     return -1;
@@ -650,9 +592,12 @@ int loadcalib_cmd(int args, tinycl_parameter* tp, void *v)
     vc->b = -vna_1pt[n].zs;
     vc->c = (vna_1pt[n].zs - vna_1pt[n].zt) / ((vna_1pt[n].zo - vna_1pt[n].zt) * z0);
     vc->d = (-vna_1pt[n].zo) * vc->c;
+    //  vc->b = -vna_1pt[n].zt;
+    //  vc->c = (vna_1pt[n].zt*2.0f-vna_1pt[n].zo-vna_1pt[n].zs)/(vna_1pt[n].zs-vna_1pt[n].zo);
+    //  vc->d = (vna_1pt[n].zo*vna_1pt[n].zs*2.0f-vna_1pt[n].zt*(vna_1pt[n].zo+vna_1pt[n].zs))/(vna_1pt[n].zs-vna_1pt[n].zo);
   }
   Serial.println("Open port calibration successful");
-  calib_state = VNA_VALID_CALIB_1PT;
+  vna_state.calib_state = VNA_VALID_CALIB_1PT;
   free(vna_1pt);
   vna_1pt = NULL;
   return 0;
@@ -675,27 +620,29 @@ int vna_twocalib_dataset_operation(
   Complex cur2pt((float)cur2i, (float)cur2q);
   vna_calib_freq_parm *vc = &vna_calib[n];
   Complex vn = voltpt + curpt * vc->b;
-  //  Complex in = curpt*vc->d + voltpt*vc->c;
+  Complex in = curpt * vc->d + voltpt * vc->c;
   vc->z2 = vn / cur2pt;
-  DEBUGMSG("freq=%u z2=%d+i %d", freq, (int)(1000.0f * vc->z2.real), (int)(1000.0f * vc->z2.imag));
+  vc->i2 = in / cur2pt;
+  DEBUGMSG("freq=%u z2=%d+i %d i2=%d+i %d", freq, (int)(1000.0f * vc->z2.real), (int)(1000.0f * vc->z2.imag), (int)(1000.0f * vc->i2.real), (int)(1000.0f * vc->i2.imag));
 }
 
 int twocalib_cmd(int args, tinycl_parameter* tp, void *v)
 {
   vna_acquisition_state *vs = &vna_state;
-  if ((calib_state != VNA_VALID_CALIB_1PT) && (calib_state != VNA_VALID_CALIB_2PT))
+  if ((vna_state.calib_state != VNA_VALID_CALIB_1PT) && (vna_state.calib_state != VNA_VALID_CALIB_2PT))
   {
     Serial.println("Two Port Must Have Valid One Port Cal");
     return -1;
   }
-  vna_acquire_dataset(vs, vna_twocalib_dataset_operation, (void *)vna_2pt);
-  Serial.println("Open calibration successful");
-  calib_state = VNA_VALID_CALIB_2PT;
+  vna_acquire_dataset(vs, vna_twocalib_dataset_operation, NULL);
+  Serial.println("Two port calibration successful");
+  vna_state.calib_state = VNA_VALID_CALIB_2PT;
   return 0;
 }
 
 void printfloat(float f)
 {
+  unsigned int i;
   if (f < 0.0f)
   {
     Serial.print("-");
@@ -703,7 +650,11 @@ void printfloat(float f)
   }
   Serial.print((int)f);
   Serial.print(".");
-  Serial.print((int)((f - floor(f)) * 1000000.0f));
+  i = ((unsigned int)floor((f - floor(f)) * 10000.0f));
+  if (i < 10) Serial.print("000");
+  else if (i < 100) Serial.print("00");
+  else if (i < 1000) Serial.print("000");
+  Serial.print(i);
 }
 
 int vna_display_acq_operation(
@@ -725,7 +676,7 @@ int vna_display_acq_operation(
   Complex in = curpt * vc->d + voltpt * vc->c;
   Complex imp = vn / in;
   Complex zthru;
-  if (calib_state == VNA_VALID_CALIB_2PT)
+  if (vna_state.calib_state == VNA_VALID_CALIB_2PT)
   {
     Complex curpt2((float)cur2i, (float)cur2q);
     zthru = (vn - curpt2 * vc->z2) / in;
@@ -737,7 +688,7 @@ int vna_display_acq_operation(
     printfloat(imp.real);
     Serial.print(",");
     printfloat(imp.imag);
-    if (calib_state == VNA_VALID_CALIB_2PT)
+    if (vna_state.calib_state == VNA_VALID_CALIB_2PT)
     {
       Serial.print(",");
       printfloat(zthru.real);
@@ -753,7 +704,7 @@ int vna_display_acq_operation(
     printfloat(imp.real);
     Serial.print(",");
     printfloat(imp.imag);
-    if (calib_state == VNA_VALID_CALIB_2PT)
+    if (vna_state.calib_state == VNA_VALID_CALIB_2PT)
     {
       Serial.print(") ZT (");
       printfloat(zthru.real);
@@ -768,7 +719,7 @@ int acq_cmd(int args, tinycl_parameter* tp, void *v)
 {
   int n;
   vna_acquisition_state *vs = &vna_state;
-  if ((calib_state != VNA_VALID_CALIB_1PT) && (calib_state != VNA_VALID_CALIB_2PT))
+  if ((vna_state.calib_state != VNA_VALID_CALIB_1PT) && (vna_state.calib_state != VNA_VALID_CALIB_2PT))
   {
     Serial.println("Can only be performed after 1 or 2 port calibration");
     return -1;
@@ -798,13 +749,13 @@ int vna_display_sparm_operation(
   Complex s11 = (imp - z0) / (imp + z0);
   float s11db = (5.0f / logf(10.0f)) * logf(s11.absq());
   float s11deg = RAD2DEG(s11.arg());
-  Complex zthru, s21;
+  Complex s21;
   float s21db, s21deg;
-  if (calib_state == VNA_VALID_CALIB_2PT)
+  if (vna_state.calib_state == VNA_VALID_CALIB_2PT)
   {
     Complex curpt2((float)cur2i, (float)cur2q);
-    zthru = (vn - curpt2 * vc->z2) / in;
-    s21 = (curpt2 * vc->z2) / vn;
+    //s21 = (curpt2 * vc->z2) / vn;
+    s21 = curpt2 * (vc->z2 + vc->i2 * z0) / (vn + in * z0);
     s21db = (10.0f / logf(10.0f)) * logf(s21.absq());
     s21deg = RAD2DEG(s21.arg());
   }
@@ -815,7 +766,7 @@ int vna_display_sparm_operation(
     printfloat(s11db);
     Serial.print(",");
     printfloat(s11deg);
-    if (calib_state == VNA_VALID_CALIB_2PT)
+    if (vna_state.calib_state == VNA_VALID_CALIB_2PT)
     {
       Serial.print(",");
       printfloat(s21db);
@@ -831,7 +782,7 @@ int vna_display_sparm_operation(
     printfloat(s11db);
     Serial.print(",");
     printfloat(s11deg);
-    if (calib_state == VNA_VALID_CALIB_2PT)
+    if (vna_state.calib_state == VNA_VALID_CALIB_2PT)
     {
       Serial.print(") S21 (");
       printfloat(s21db);
@@ -846,12 +797,121 @@ int sparm_cmd(int args, tinycl_parameter* tp, void *v)
 {
   int n;
   vna_acquisition_state *vs = &vna_state;
-  if ((calib_state != VNA_VALID_CALIB_1PT) && (calib_state != VNA_VALID_CALIB_2PT))
+  if ((vna_state.calib_state != VNA_VALID_CALIB_1PT) && (vna_state.calib_state != VNA_VALID_CALIB_2PT))
   {
     Serial.println("Can only be performed after 1 or 2 port calibration");
     return -1;
   }
   vna_acquire_dataset(vs, vna_display_sparm_operation, NULL);
+}
+
+void *flash_pages[] = { (void *)0x08018000u, (void *)0x08019000u, (void *)0x0801A000u, (void *)0x0801B000u, (void *)0x0801C000u, (void *)0x0801D000u, (void *)0x0801E000u, (void *)0x0801F000u };
+#define NUM_FLASH_PAGES ((sizeof(flash_pages)/sizeof(void *)))
+
+int writecal_cmd(int args, tinycl_parameter* tp, void *v)
+{
+  int n = tp[0].ti.i;
+  void *vp[3];
+  int b[3];
+ 
+  if ((vna_state.calib_state != VNA_VALID_CALIB_1PT) && (vna_state.calib_state != VNA_VALID_CALIB_2PT))
+  {
+    Serial.println("There is no calibration to write");
+    return -1;
+  }
+  if ((n < 1) || (n > NUM_FLASH_PAGES))
+  {
+    Serial.println("Invalid calibration number");
+    return -1;
+  }
+  Serial.print("Writing calibration ");
+  Serial.print(n);
+ 
+  vp[0] = (void *)&flash_header;
+  b[0] = sizeof(flash_header);
+  vp[1] = &vna_state;
+  b[1] = sizeof(vna_state);
+  vp[2] = vna_calib;
+  b[2] = sizeof(vna_calib);
+  
+  Serial.println(writeflashstruct(flash_pages[n - 1], 3, vp, b) ? ": written" : ": failed");
+  return 0;
+}
+
+int readcal_cmd(int args, tinycl_parameter* tp, void *v)
+{
+  int n = tp[0].ti.i;
+  vna_flash_header rd_flash_header;
+  void *vp[3];
+  int b[3];
+
+  if ((n < 1) || (n > NUM_FLASH_PAGES))
+  {
+    Serial.println("Invalid calibration number");
+    return -1;
+  }
+
+  vp[0] = &rd_flash_header;
+  b[0] = sizeof(rd_flash_header);
+  readflashstruct(flash_pages[n - 1], 1, vp, b);
+  
+  if (!((rd_flash_header.flash_header_1 == flash_header.flash_header_1) && (rd_flash_header.flash_header_2 == flash_header.flash_header_2)))
+  {
+      Serial.println("No calibration stored");
+      return 0;
+  }
+
+  vp[0] = NULL;
+  b[0] = sizeof(flash_header);
+  vp[1] = &vna_state;
+  b[1] = sizeof(vna_state);
+  vp[2] = vna_calib;
+  b[2] = sizeof(vna_calib);
+  readflashstruct(flash_pages[n - 1], 3, vp, b);
+   
+  Serial.print("Read calibration ");
+  Serial.println(n);
+  return 0;
+}
+
+int listcal_cmd(int args, tinycl_parameter* tp, void *v)
+{
+  int n;
+  vna_flash_header rd_flash_header;
+  vna_acquisition_state rd_vna_state;
+  void *vp[2];
+  int b[2];
+  vp[0] = &rd_flash_header;
+  b[0] = sizeof(rd_flash_header);
+  vp[1] = &rd_vna_state;
+  b[1] = sizeof(rd_vna_state);
+  Serial.println("Calibrations in Flash:");
+  for (n = 0; n < NUM_FLASH_PAGES; n++)
+  {
+    if (readflashstruct(flash_pages[n], 2, vp, b))
+    {
+      if ((rd_flash_header.flash_header_1 == flash_header.flash_header_1) && (rd_flash_header.flash_header_2 == flash_header.flash_header_2))
+      {
+        Serial.print(n + 1);
+        Serial.print(": Start ");
+        Serial.print(rd_vna_state.startfreq);
+        Serial.print(" End ");
+        Serial.print(rd_vna_state.endfreq);
+        Serial.print(" # ");
+        Serial.print(rd_vna_state.nfreqs);
+        Serial.print(" Impedance ");
+        Serial.print(rd_vna_state.char_impedance);
+        Serial.print(" Avgs ");
+        Serial.print(rd_vna_state.num_averages);
+        if (rd_vna_state.calib_state == VNA_VALID_CALIB_1PT)
+          Serial.println(" 1 Port");
+        else if (rd_vna_state.calib_state == VNA_VALID_CALIB_2PT)
+          Serial.println(" 2 Port");
+        else Serial.println(" No Cal");
+      }
+    }
+  }
+  Serial.println("-----");
 }
 
 const tinycl_command tcmds[] =
@@ -867,9 +927,9 @@ const tinycl_command tcmds[] =
   { "OPEN", "Open Calibration", opencalib_cmd, TINYCL_PARM_END },
   { "LOAD", "Load Calibration", loadcalib_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
   { "TWOCAL", "Two Port Calibration", twocalib_cmd, TINYCL_PARM_END },
-  //  { "PRINT", "Print something", print_cmd, {TINYCL_PARM_STR, TINYCL_PARM_END } },
-  //  { "PRINT2", "Print 2 somethings", print2_cmd, {TINYCL_PARM_STR, TINYCL_PARM_STR, TINYCL_PARM_END } },
-  //  { "ADD", "Add Two Numbers", add_cmd, {TINYCL_PARM_INT, TINYCL_PARM_INT, TINYCL_PARM_END } },
+  { "LISTCAL", "List Calibration States", listcal_cmd, TINYCL_PARM_END },
+  { "WRITECAL", "Write Calibration State", writecal_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
+  { "READCAL", "Read Calibration State", readcal_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
   { "HELP", "Display This Help", help_cmd, {TINYCL_PARM_END } },
 };
 

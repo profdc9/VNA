@@ -87,6 +87,11 @@ Complex Complex::recip() const
   return Complex(real/mag,-imag/mag);
 }
 
+Complex Complex::conj() const
+{
+  return Complex(real,-imag);
+}
+
 Complex Complex::parallel(const Complex &cmplx) const
 {
    Complex temp = (recip()+cmplx.recip());
@@ -111,10 +116,7 @@ Complex Complex::operator-(const Complex &val) const
 
 Complex Complex::operator-() const
 {
-  Complex c;
-  c.real = - real;
-  c.imag = - imag;
-  return c;
+  return Complex(-real,-imag);
 }
 
 Complex Complex::operator*(const Complex &val) const
@@ -175,4 +177,18 @@ bool Complex::operator==(const Complex &val)
 bool Complex::operator!=(const Complex &val)
 {
 	return ((real != val.real) || (imag != val.imag));
+}
+
+Complex Complex::bilinear(const Complex &val) const
+{
+  Complex c = *this - val;
+  Complex d = *this + val;
+  return c/d;
+}
+
+Complex Complex::bilinear(float val) const
+{ 
+  Complex c = *this - val;
+  Complex d = *this + val;
+  return c/d;
 }
