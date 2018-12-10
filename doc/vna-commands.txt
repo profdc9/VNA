@@ -1,0 +1,173 @@
+Text command documentation in VNA
+
+The serial text command interface is intended to be a way to interface to the VNA
+that does not depend on the availability of any other hardware that may be
+unavailable in the future.
+
+The device enumerates as a USB CDC serial port.  Using the arduino terminal, or
+other terminal software (e.g. Teraterm or minicom), or by directly opening the
+serial port, these commands may be used to acquire data from the VNA.  Uppercase
+or lowercase are both acceptable for the commands.
+
+
+Example command sequence:
+
+SETACQ 80 3000000 30000000        Set up acquisition of 80 frequencies between
+                                  3 and 30 MHz.  Any existing calibration state in
+								  RAM is invalidated.
+								  
+OPEN                              Do an open circuit calibration (no load on port 1)
+
+SHORT                             Do a short circuit calibration (short circuit load
+                                  on port 1)
+								  
+LOAD 50                           Do a 50 ohm load calibration on port 1.  Connect
+                                  50 ohm resistor for port 1.
+								  After this step, 1 port calibration is complete.
+								  
+TWOCAL                            Do a two-port calibration.  Connect port 1 to port 2
+                                  and execute the command.
+                                  After this step, 2 port calibration is complete.
+								  
+WRITECAL 1                        Write calibration state to flash slot 1
+
+LISTCAL                           List all calibration states in flash to verify it is
+                                  written
+								  
+READCAL 1                         Read back calibration state from flash slot 1 (not
+                                  necessary at this step, just here as an example)
+								  
+CSV 1                             Turn on comma-separated-values mode (optional)
+
+ACQ                               After attaching a load, acquire data.  Displays
+                                  impedance of load on port 1 and thru impedance
+								  between port 1 and port 2
+								  
+SPARM                             Acquire data and show S11 (reflection dB and phase)
+                                  and S21 (transmission dB and phase) 
+
+								  
+Commands:
+
+								  
+SETACQ <number of frequencies> <lowest frequency> <highest frequency>
+
+Set the frequency range for which data acquisition occurs.  Note that this invalidates
+any calibration performed so that the calibration sequence must be performed before
+data acquisition can occur.
+
+<number of frequencies> - the number of frequencies over the band to sample, up to 80
+<lowest frequency> - lowest frequency in the band to sample
+<highest frequency> - highest frequency in the band to sample
+
+For example, to set up to sample 80 frequencies over the HF band, 
+"SETACQ 80 3000000 30000000"
+
+
+ACQ
+
+Acquire data, given a valid calibration, using the frequencies set up in the SETACQ
+command.  This measures the impedance of the load on port 1, and the series impedance
+between port 1 and port 2.  Thru impedance is only shown if there is a valid
+2-port calibration.  If CSV format is used, the output is
+<frequency>,<load resistance on port 1>,<load reactance on port 1>,<thru resistance port 1 to 2>,<thru reactance port 1 to 2>
+
+
+SPARM
+
+Acquire data, given a valid calibration, using the frequencies set up in the SETACQ
+command.  This measures the dB and phase of the S11 reflection on port 1, and the dB
+and phase of the transmission between port 1 and port 2.  Phase is given in -180 to
+180 degrees.  The S21 is shown only if there is a valid 2-port calibration.
+If CSV format is used, the output is
+<frequency>,<S11 dB>,<S11 phase>,<S21 dB>,<S21 phase>
+
+
+IMACQ <number of frequencies> <lowest frequency> <highest frequency>
+
+Immediately acquires raw sample data from both ports.  This does not require a
+valid calibration to work.  Outputs data to terminal.  The raw output is intended for
+those who would rather do all of the processing of the data using an external program.
+If comma-separated-value (CSV) format is used (highly recommended) the following
+format is used:
+
+<frequency>,<port 1 volt in-phase>,<port 1 volt quadrature-phase>,<port 1 current in-phase>,<port 1 current quadrature phase>,<port 2 current in-phase>,<port 2 current quadrature phase>
+
+<number of frequencies> - the number of frequencies over the band to sample
+<lowest frequency> - lowest frequency in the band to sample
+<highest frequency> - highest frequency in the band to sample
+
+For example, to immediately sample 200 frequencies over the HF band, 
+"IMACQ 200 3000000 30000000"
+
+
+DOACQ
+
+The same as IMACQ, except uses the frequency range set by SETACQ, so this does not need
+parameters.
+
+
+OPEN
+
+Begin 1 port calibration process.  With an open circuit on port 1, acquire open port part
+of calibration.
+
+
+SHORT
+
+Only after OPEN port calibration, short circuit port 1, and acquire short circuit
+part of calibration.  If you are calibrating two ports, short circuit port 2 as well
+at this time.
+
+
+LOAD <impedance>
+
+Only after SHORT port calibration, apply a load of impedance <impedance> (usually 50 ohms)
+to the port.  After this step, 1 port calibration is complete.
+
+
+TWOCAL 
+
+Connect port 1 to port 2 and acquire thru part of calibration.  After this step, 2 port
+calibration is complete.
+
+
+AVERAGES <# averages> <timeout>
+
+Change the number of averages for data acquisition.  The default is 64 averages.  More
+averages take longer but get a less noisy result.  The <timeout> is the timeout of the
+data acquisition in milliseconds, usually 1000 ms.  You can use more averages when
+calibrating to get a more accurate calibration than when acquiring data.
+
+
+CSV <csv state>
+
+Turn on or off comma-separated-values mode.  <csv state>=0 turn off, <csv state>=1 turn on.
+Comma-separated-values mode is intended to be easier to parse, or able to be loaded
+into spreadsheet software for further processing.
+
+
+ATTEN <attenuation state>
+Set the state of the attenuator.  The value <attenuation state> has the following meaning:
+0 = automatic, 1 = attenuator off, 2 = attenuator on.
+
+
+LISTCAL
+
+List all of the calibration states in the flash.  There are currently 8 slots,
+numbered 1 to 8, for calibration states.  Each calibration state uses 4k of flash memory.
+
+
+WRITECAL <slot #>
+
+Write the current calibration state, either 1 or 2 port, into the corresponding
+flash slot <slot #>.  This saves the state of the VNA calibration and frequency ranges
+to the slot.
+
+
+READCAL <slot #>
+
+Read back the calibration state from the flash into the RAM from slot <slot #>.  It
+is advised for the most accurate results, the calibration be performed immediately
+preceding measurement, but for rough results, like checking an antenna, a saved
+calibration is probably good enough.

@@ -30,7 +30,7 @@ freely, subject to the following restrictions:
 
 #ifdef DEBUGM
 
-unsigned char debugmsg_state = 1;
+unsigned char debugmsg_state = 0;
 
 void setDebugMsgMode(unsigned char state)
 {
@@ -39,10 +39,15 @@ void setDebugMsgMode(unsigned char state)
 
 void debugmsgprintf(const char *format, ...)
 {
+  char msg[MAXMSG];
+  va_list ap;
+
   if (!debugmsg_state)
-      return;
-	char msg[MAXMSG];
-	va_list ap;
+  {
+    if (*format == '.') Serial.print(".");
+    return;
+  }
+  if (*format == '.') format++;
 	va_start(ap, format);
 #ifdef USE_MINIPRINTF
   mini_vsnprintf(msg,sizeof(msg)-1,(const char *)format,ap);
@@ -54,4 +59,3 @@ void debugmsgprintf(const char *format, ...)
 }
 
 #endif
-
