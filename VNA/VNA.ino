@@ -146,16 +146,16 @@ void timerContInterrupt(void)
         sampCUR2I += sampCUR2;
         break;
       case 1: sampCURQ -= sampCUR;
-        sampVOLTQ += sampVOLT;
-        sampCUR2Q += sampCUR2;
+        sampVOLTQ -= sampVOLT;
+        sampCUR2Q -= sampCUR2;
         break;
       case 2: sampCURI -= sampCUR;
         sampVOLTI -= sampVOLT;
         sampCUR2I -= sampCUR2;
         break;
       case 3: sampCURQ += sampCUR;
-        sampVOLTQ -= sampVOLT;
-        sampCUR2Q -= sampCUR2;
+        sampVOLTQ += sampVOLT;
+        sampCUR2Q += sampCUR2;
         break;
     }
     sampPWR += sampCUR2;
@@ -636,7 +636,7 @@ int loadcalib_cmd(int args, tinycl_parameter* tp, void *v)
     vc->c = (vna_1pt[n].zs - vna_1pt[n].zt) / ((vna_1pt[n].zo - vna_1pt[n].zt) * z0);
     vc->d = (-vna_1pt[n].zo) * vc->c;
   }
-  Serial.println("\r\nOpen port calibration successful");
+  Serial.println("\r\nOne port calibration successful");
   vna_state.calib_state = VNA_VALID_CALIB_1PT;
   free(vna_1pt);
   vna_1pt = NULL;
@@ -792,7 +792,7 @@ int vna_display_sparm_operation(
   Complex imp = vn / in;
   float z0 = (float)vna_state.char_impedance;
   Complex s11 = (imp - z0) / (imp + z0);
-  float s11db = (5.0f / logf(10.0f)) * logf(s11.absq());
+  float s11db = (10.0f / logf(10.0f)) * logf(s11.absq());
   float s11deg = RAD2DEG(s11.arg());
   Complex s21;
   float s21db, s21deg;
@@ -975,6 +975,7 @@ const tinycl_command tcmds[] =
   { "OPEN", "Open Calibration", opencalib_cmd, TINYCL_PARM_END },
   { "LOAD", "Load Calibration", loadcalib_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
   { "TWOCAL", "Two Port Calibration", twocalib_cmd, TINYCL_PARM_END },
+  { "THRU", "Also Two Port Calibration", twocalib_cmd, TINYCL_PARM_END },
   { "LISTCAL", "List Calibration States", listcal_cmd, TINYCL_PARM_END },
   { "WRITECAL", "Write Calibration State", writecal_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
   { "READCAL", "Read Calibration State", readcal_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
