@@ -64,7 +64,7 @@ bool Si5351::init(uint8_t xtal_load_c, uint32_t xo_freq, int32_t corr)
 {
 	// Start I2C comms
 	Wire.begin();
-
+	
 	// Check for a device on the bus, bail out if it is not there
 	Wire.beginTransmission(i2c_bus_addr);
 	uint8_t reg_val;
