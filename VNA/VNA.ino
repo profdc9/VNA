@@ -42,6 +42,12 @@ freely, subject to the following restrictions:
 #define AD_VOLT_PIN PB0
 #define AD_CUR2_PIN PA2
 #define ATTEN_PIN PB14
+#define TOUCHSCREEN_DISABLE_PIN PB13
+
+#ifdef VNA_TOUCHSCREEN
+bool touchscreen_enabled;
+#endif
+
 
 Si5351 si5351;
 
@@ -110,6 +116,11 @@ void setup_pins(void)
   pinMode(AD_CUR_PIN, INPUT_ANALOG);
   pinMode(AD_VOLT_PIN, INPUT_ANALOG);
   pinMode(AD_CUR2_PIN, INPUT_ANALOG);
+#ifdef VNA_TOUCHSCREEN
+  pinMode(TOUCHSCREEN_DISABLE_PIN, INPUT_PULLUP);
+  delay(1);
+  touchscreen_enabled = digitalRead(TOUCHSCREEN_DISABLE_PIN) == HIGH;
+#endif
 }
 
 #define DEMCR           (*((volatile uint32_t *)0xE000EDFC))
@@ -227,7 +238,7 @@ void setup() {
   rcc_clk_disable(RCC_I2C1);
 
 #ifdef VNA_TOUCHSCREEN
-  touchscreen_setup();
+  if (touchscreen_enabled) touchscreen_setup();
 #endif
 
   setup_if_clock();
@@ -406,7 +417,7 @@ bool vna_acquire_dataset(vna_acquisition_state *vs, vna_acquire_dataset_operatio
         return false;
     }
 #ifdef VNA_TOUCHSCREEN
-    if (touchscreen_abort())
+    if (touchscreen_enabled && touchscreen_abort())
        return false;
 #endif
   }
@@ -531,8 +542,7 @@ int imacq_cmd(int args, tinycl_parameter* tp, void *v)
     Serial.println("Invalid maximum or minimum frequency");
     return -1;
   }
-  
-(&vs, vna_display_dataset_operation, NULL);
+  vna_acquire_dataset(&vs, vna_display_dataset_operation, NULL);
   return 0;
 }
 
@@ -1053,6 +1063,6 @@ void loop(void)
   if (tinycl_task(sizeof(tcmds) / sizeof(tinycl_command), tcmds, NULL))
     Serial.print("> ");
 #ifdef VNA_TOUCHSCREEN
-  touchscreen_task();
+  if (touchscreen_enabled) touchscreen_task();
 #endif
 }

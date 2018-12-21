@@ -444,6 +444,8 @@ int touchscreen_recal(int code, void *v)
   return 0;
 }
 
+#define TOUCHSCREEN_SMITH_RADIUS 0.45f
+
 typedef struct _touchscreen_axes_parameters
 {
   float minx, maxx, minrndx, maxrndx, stepspacex, slopex;
@@ -521,6 +523,53 @@ char *mini_ftoa(float f, int dec, char *s, int len)
   return last;  
 }
 
+int touchscreen_draw_smith_chart(Adafruit_GFX *gfx, touchscreen_axes_parameters *t)
+{
+  char s[40];
+  char *c;
+  int h2,w2;
+
+  t->w = gfx->width();
+  t->h = gfx->height();
+  w2 = t->w/2;
+  h2 = t->h/2;
+
+  float radchart = (TOUCHSCREEN_SMITH_RADIUS*t->h);
+  for (int k=3;k<12;k++)
+  {
+    int16_t r = radchart*3/k;
+    gfx->drawCircle(w2+radchart-r,h2,r,ILI9341_DARKGREY);
+  }
+  gfx->writeLine(w2-radchart,h2,w2+radchart,t->h/2,ILI9341_DARKGREY);
+  for (int k=1;k<5;k++)
+  {
+    int16_t r = radchart/k;
+    gfx->drawCircle(w2+radchart,h2+r,r,ILI9341_DARKGREY);
+    gfx->drawCircle(w2+radchart,h2-r,r,ILI9341_DARKGREY);
+    r = radchart*k;
+    gfx->drawCircle(w2+radchart,h2+r,r,ILI9341_DARKGREY);
+    gfx->drawCircle(w2+radchart,h2-r,r,ILI9341_DARKGREY);
+  }  
+  w2 = w2*5/4;
+  for (int k=radchart+2;k<w2;k++)
+  {
+    gfx->drawCircle(t->w/2,t->h/2,k,ILI9341_BLACK);
+    gfx->drawCircle(t->w/2-1,t->h/2,k,ILI9341_BLACK);
+  }
+  gfx->setTextSize(1);
+  gfx->setTextColor(ILI9341_BLUE);
+  gfx->setCursor(0,0);
+  gfx->print("Start Frequency");
+  gfx->setCursor(0,10);
+  gfx->print(mini_ftoa(t->minx,0,s,sizeof(s)-1));
+  gfx->setTextColor(ILI9341_RED);
+  gfx->setCursor(0,20);
+  gfx
+  ->print("Stop Frequency");
+  gfx->setCursor(0,30);
+  gfx->print(mini_ftoa(t->maxx,0,s,sizeof(s)-1));
+}
+
 int touchscreen_draw_axes(Adafruit_GFX *gfx, touchscreen_axes_parameters *t)
 {
   float f;
@@ -586,10 +635,20 @@ int touchscreen_draw_axes(Adafruit_GFX *gfx, touchscreen_axes_parameters *t)
   }
 }
 
+bool touchscreen_smith_chart = false;
 float touchscreen_axes_impedance_scale = 500.0f;
 float touchscreen_axes_db_scale = 50.0f;
 touchscreen_axes_parameters taps;
 
+int touchscreen_smith(int code, void *v)
+{
+  touchscreen_smith_chart = !touchscreen_smith_chart;
+  if (touchscreen_smith_chart)
+      touchscreen_display_message("Smith chart\nactivated");
+  else
+      touchscreen_display_message("Graph mode\nactivated");
+  touchscreen_wait();  
+}
 
 int touchscreen_rtr_swr_display(int n, int total, unsigned int freq, bool ch2, Complex imp, Complex zthru)
 {
@@ -700,25 +759,37 @@ int touchscreen_zacq(int code, void *v)
 
 int touchscreen_rtr_sparm_display(int n, int total, unsigned int freq, bool ch2, Complex s11, Complex s21)
 {
-  float s11db = (10.0f / logf(10.0f)) * logf(s11.absq());
-  float s11deg = RAD2DEG(s11.arg());
-  float s21db, s21deg;
-  if (ch2)
-  {
-    s21db = (10.0f / logf(10.0f)) * logf(s21.absq());
-    s21deg = RAD2DEG(s21.arg());    
-  }
   touchscreen_axes_parameters *t = &taps;
-  int16_t xcoor = (freq-t->minx)*t->slopex;
-  int16_t ycoor1, ycoor2;
-  if (t->port == 1)
-  {
-    ycoor1 = (t->maxy1-s11db)*t->slopey1;
-    ycoor2 = (t->maxy2-s11deg)*t->slopey2;    
+  int16_t xcoor, ycoor1, ycoor2;
+  uint16_t line1_color;
+  if (touchscreen_smith_chart)
+  {      
+    if (taps.port == 2) s11 = s21;
+    xcoor = t->w/2 + (s11.real*((float)t->h)*TOUCHSCREEN_SMITH_RADIUS);
+    ycoor1 = t->h/2 + (s11.imag*((float)t->h)*TOUCHSCREEN_SMITH_RADIUS);
+    line1_color = (n*31)/total;
+    line1_color = (line1_color << 11) | (31-line1_color);
   } else
-  {
-    ycoor1 = (t->maxy1-s21db)*t->slopey1;
-    ycoor2 = (t->maxy2-s21deg)*t->slopey2;    
+  { 
+     float s11db = (10.0f / logf(10.0f)) * logf(s11.absq());
+     float s11deg = RAD2DEG(s11.arg());
+     float s21db, s21deg;
+     if (ch2)
+     {
+        s21db = (10.0f / logf(10.0f)) * logf(s21.absq());
+        s21deg = RAD2DEG(s21.arg());    
+     }
+     xcoor = (freq-t->minx)*t->slopex;
+     if (t->port == 1)
+     {
+       ycoor1 = (t->maxy1-s11db)*t->slopey1;
+       ycoor2 = (t->maxy2-s11deg)*t->slopey2;    
+     } else
+     {
+       ycoor1 = (t->maxy1-s21db)*t->slopey1;
+       ycoor2 = (t->maxy2-s21deg)*t->slopey2;    
+     }
+     line1_color = ILI9341_RED;
   }
   if (xcoor < 0) xcoor = 0;
   if (xcoor >= t->w) xcoor = t->w-1;
@@ -727,8 +798,8 @@ int touchscreen_rtr_sparm_display(int n, int total, unsigned int freq, bool ch2,
   if (ycoor2 < 0) ycoor2 = 0;
   if (ycoor2 >= t->h) ycoor2 = t->h-1;
   if (t->lasty1 >= 0)
-      tft.writeLine(t->lastx,t->lasty1,xcoor,ycoor1,ILI9341_RED);  
-  if (t->lasty2 >= 0)
+      tft.writeLine(t->lastx,t->lasty1,xcoor,ycoor1,line1_color);  
+  if ((!touchscreen_smith_chart) && (t->lasty2 >= 0))
       tft.writeLine(t->lastx,t->lasty2,xcoor,ycoor2,ILI9341_BLUE);  
   t->lastx = xcoor;
   t->lasty1 = ycoor1;
@@ -753,7 +824,10 @@ int touchscreen_sparm(int code, void *v)
   taps.maxy2 = 180.0f;
   taps.axislabel2 = "Phase";
   tft.fillScreen(ILI9341_BLACK);
-  touchscreen_draw_axes(&tft,&taps);
+  if (touchscreen_smith_chart)
+      touchscreen_draw_smith_chart(&tft,&taps);
+  else 
+      touchscreen_draw_axes(&tft,&taps);
   taps.lasty1 = -1;
   taps.lasty2 = -1;
   switch (vna_acquire_sparm(touchscreen_rtr_sparm_display))
@@ -762,7 +836,10 @@ int touchscreen_sparm(int code, void *v)
             break;
     case 1: touchscreen_display_message("Acquisition aborted");
             break;
-    case 2: touchscreen_draw_axes(&tft,&taps);
+    case 2: if (touchscreen_smith_chart)
+                touchscreen_draw_smith_chart(&tft,&taps);
+            else
+                touchscreen_draw_axes(&tft,&taps);
             break;
   }
   touchscreen_wait();  
@@ -837,7 +914,8 @@ const touchscreen_button_panel_entry settingspanel[] =
   { 200, 10, 40,   4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Char Imped", 2, touchscreen_char_impedance },
   { 300, 160, 40,   4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Averages", 2, touchscreen_averages },
   { 400, 10, 80, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Imped Scale", 2, touchscreen_impedance_scale },
-  { 500, 160, 80, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "dB Scale", 2, touchscreen_db_scale }
+  { 500, 160, 80, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "dB Scale", 2, touchscreen_db_scale },
+  { 600, 10, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Smith", 2, touchscreen_smith }
 };
 
 int touchscreen_settings(int code, void *v)
