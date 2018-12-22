@@ -144,7 +144,7 @@ volatile unsigned int lasttick = 0;
 unsigned int numphases = 4;
 volatile unsigned int curphase = 0;
 
-unsigned int timephase[30];
+//unsigned int timephase[30];
 
 void ifClockInterrupt(void)
 {
@@ -163,7 +163,7 @@ void ifClockInterrupt(void)
       sampPWR = 0;
     }
     current_summed++;
-    timephase[0] = timerval;
+    //timephase[0] = timerval;
     timer_pause(TIMER3);
     timer_set_count(TIMER3, 0);
     timerval = diftick / numphases;
@@ -180,11 +180,11 @@ void ifClockInterrupt(void)
 
 void timerContInterrupt(void)
 {
-  unsigned int timerval = CPU_CYCLES;
+  //unsigned int timerval = CPU_CYCLES;
 
   if (curphase < numphases)
   {
-    timephase[curphase] = timerval;
+    //timephase[curphase] = timerval;
     analogReadPins();
     switch (curphase & 0x03)
     {
@@ -225,17 +225,7 @@ void setup() {
   initialize_cortex_m3_cycle_counter();
   setup_pins();
 
-  rcc_clk_enable(RCC_I2C1);
-  si5351.init(SI5351_CRYSTAL_LOAD_8PF, 27000000u, 0);
-  si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_6MA);
-  si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_6MA);
-  si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
-  si5351.set_ms_source(SI5351_CLK1, SI5351_PLLB);
-  si5351.set_freq(10000000ull * SI5351_FREQ_MULT, SI5351_CLK0);
-  si5351.set_freq(10010000ull * SI5351_FREQ_MULT, SI5351_CLK1);
-  si5351.output_enable(SI5351_CLK0, 1);
-  si5351.output_enable(SI5351_CLK1, 1); 
-  rcc_clk_disable(RCC_I2C1);
+  vna_initialize_si5351();
 
 #ifdef VNA_TOUCHSCREEN
   if (touchscreen_enabled) touchscreen_setup();
@@ -384,11 +374,27 @@ int vna_display_dataset_operation(vna_acquire_dataset_state *vads, void *va)
   }
 }
 
+void vna_initialize_si5351()
+{
+  rcc_clk_enable(RCC_I2C1);
+  si5351.init(SI5351_CRYSTAL_LOAD_8PF, 27000000u, 0);
+  si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_6MA);
+  si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_6MA);
+  si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
+  si5351.set_ms_source(SI5351_CLK1, SI5351_PLLB);
+  si5351.set_freq(10000000ull * SI5351_FREQ_MULT, SI5351_CLK0);
+  si5351.set_freq(10010000ull * SI5351_FREQ_MULT, SI5351_CLK1);
+  si5351.output_enable(SI5351_CLK0, 1);
+  si5351.output_enable(SI5351_CLK1, 1); 
+  rcc_clk_disable(RCC_I2C1);
+}
+
 bool vna_acquire_dataset(vna_acquisition_state *vs, vna_acquire_dataset_operation vado, void *v)
 {
   int n;
-  vna_acquire_dataset_state vads; 
-  
+  vna_acquire_dataset_state vads;
+   
+  vna_initialize_si5351();
   unsigned int freqstep = (vs->endfreq - vs->startfreq) / vs->nfreqs;
   for (n = 0; n < vs->nfreqs; n++)
   {
@@ -429,7 +435,7 @@ int vna_set_averages(unsigned short averages, unsigned short timeout)
   if ((averages >= 1) && (averages <= 5000))  
      vna_state.num_averages = averages;
   if ((timeout >= 1) && (timeout <= 10000))
-     vna_state.timeout = timeout;
+     vna_state.timeout = timeout < 500 ? 500 : timeout;
   return 1;
 }
 
@@ -513,7 +519,7 @@ int setacq_cmd(int args, tinycl_parameter* tp, void *v)
   bool statereset = (vna_state.calib_state != VNA_NO_CALIB);
   if (!vna_set_frequencies(nfreqs, startfreq, endfreq))
   {
-      Serial.print("Invalid Parameters");
+      Serial.println("Invalid Parameters");
       return 0;
   }
   Serial.print("Start Frequency = ");
@@ -550,7 +556,7 @@ int vna_open_dataset_operation(vna_acquire_dataset_state *vads, void *va)
 {
   vna_calib_oneport *v1pt = (vna_calib_oneport *)va;
   v1pt[vads->n].zo = Complex((float)vads->volti, (float)vads->voltq) / Complex((float)vads->curi, (float)vads->curq);
-  DEBUGMSG(".freq=%u zo=%d+i %d", vads->freq, (int)(1000.0f * v1pt[vads->n].zo.real), (int)(1000.0f * v1pt[vads->n].zo.imag));
+  DEBUGMSG("freq=%u zo=%d+i %d", vads->freq, (int)(1000.0f * v1pt[vads->n].zo.real), (int)(1000.0f * v1pt[vads->n].zo.imag));
 }
 
 int vna_short_dataset_operation(vna_acquire_dataset_state *vads, void *va)
@@ -558,14 +564,14 @@ int vna_short_dataset_operation(vna_acquire_dataset_state *vads, void *va)
   vna_calib_oneport *v1pt = (vna_calib_oneport *)va;
   v1pt[vads->n].zs = Complex((float)vads->volti, (float)vads->voltq) / Complex((float)vads->curi, (float)vads->curq);
   vna_calib[vads->n].s2 = Complex((float)vads->cur2i,(float)vads->cur2q) / ((float) vna_state.num_averages);
-  DEBUGMSG(".freq=%u zs=%d+i %d", vads->freq, (int)(1000.0f * v1pt[vads->n].zs.real), (int)(1000.0f * v1pt[vads->n].zs.imag));
+  DEBUGMSG("freq=%u zs=%d+i %d", vads->freq, (int)(1000.0f * v1pt[vads->n].zs.real), (int)(1000.0f * v1pt[vads->n].zs.imag));
 }
 
 int vna_load_dataset_operation(vna_acquire_dataset_state *vads, void *va)
 {
   vna_calib_oneport *v1pt = (vna_calib_oneport *)va;
   v1pt[vads->n].zt = Complex((float)vads->volti, (float)vads->voltq) / Complex((float)vads->curi, (float)vads->curq);
-  DEBUGMSG(".freq=%u zt=%d+i %d", vads->freq, (int)(1000.0f * v1pt[vads->n].zt.real), (int)(1000.0f * v1pt[vads->n].zt.imag));
+  DEBUGMSG("freq=%u zt=%d+i %d", vads->freq, (int)(1000.0f * v1pt[vads->n].zt.real), (int)(1000.0f * v1pt[vads->n].zt.imag));
 }
 
 int vna_allocate_1pt_calib(void)
@@ -684,7 +690,7 @@ int vna_twocalib_dataset_operation(vna_acquire_dataset_state *vads, void *va)
   cur2pt = cur2pt - vc->s2*((float)vna_state.num_averages);
   vc->z2 = vn / cur2pt;
   vc->i2 = in / cur2pt;
-  DEBUGMSG(".freq=%u z2=%d+i %d i2=%d+i %d", vads->freq, (int)(1000.0f * vc->z2.real), (int)(1000.0f * vc->z2.imag), (int)(1000.0f * vc->i2.real), (int)(1000.0f * vc->i2.imag));
+  DEBUGMSG("freq=%u z2=%d+i %d i2=%d+i %d", vads->freq, (int)(1000.0f * vc->z2.real), (int)(1000.0f * vc->z2.imag), (int)(1000.0f * vc->i2.real), (int)(1000.0f * vc->i2.imag));
 }
 
 int vna_thrucal(void)
@@ -697,6 +703,7 @@ int vna_thrucal(void)
 
 int twocalib_cmd(int args, tinycl_parameter* tp, void *v)
 {
+  Serial.println("Thru calibration");
   switch (vna_thrucal())
   {
     case 0: Serial.println("Two Port Must Have Valid One Port Cal");

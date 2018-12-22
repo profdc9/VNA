@@ -24,7 +24,7 @@ freely, subject to the following restrictions:
 #include "complex.h"
 
 #define VNA_MAX_FREQS 80
-#define VNA_MIN_FREQ 200000u
+#define VNA_MIN_FREQ 30000u
 #define VNA_MAX_FREQ 470000000u
 #define VNA_AUTO_ATTEN_FREQ 60000000u
 #define VNA_FREQ_3X 180000000u
@@ -123,5 +123,6 @@ int vna_acquire_sparm(vna_report_trans_reflected vrtr);
 int vna_acquire_impedance(vna_report_trans_reflected vrtr);
 int vna_set_averages(unsigned short averages, unsigned short timeout);
 int vna_set_characteristic_impedance(unsigned int char_impedance);
+void  vna_initialize_si5351(void);
 
 #endif  /* _VNA_H */

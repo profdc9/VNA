@@ -482,8 +482,8 @@ void touchscreen_round_spacing(int minticks, float minval, float maxval, float &
   if ((dif / stepspace) < minticks) stepspace *= 0.4f; 
   dec =  -((int)floorf(logf(stepspace)/logf(10.0f)));
   if (dec < 0) dec = 0;
-  minrnd = ceil(minval/stepspace)*stepspace;
-  maxrnd = floor(maxval/stepspace)*stepspace;
+  minrnd = ceilf(minval/stepspace)*stepspace;
+  maxrnd = floorf(maxval/stepspace)*stepspace;
 }
 
 char *mini_ftoa(float f, int dec, char *s, int len)
@@ -564,8 +564,7 @@ int touchscreen_draw_smith_chart(Adafruit_GFX *gfx, touchscreen_axes_parameters 
   gfx->print(mini_ftoa(t->minx,0,s,sizeof(s)-1));
   gfx->setTextColor(ILI9341_RED);
   gfx->setCursor(0,20);
-  gfx
-  ->print("Stop Frequency");
+  gfx->print("Stop Frequency");
   gfx->setCursor(0,30);
   gfx->print(mini_ftoa(t->maxx,0,s,sizeof(s)-1));
 }
@@ -657,8 +656,8 @@ int touchscreen_rtr_swr_display(int n, int total, unsigned int freq, bool ch2, C
   Complex ref = (imp-z0)/(imp+z0);
   float swr = ref.absv();
   swr = (1.0f+swr)/(1.0f-swr);
-  if (swr < 1.0f) swr = 1.0f;
-  if (swr > 10.0f) swr = 10.0f;
+  if ((swr > 0.5) && (swr < 1.0f)) swr = 1.0f;
+  if ((swr <= 0.5) || (swr > 9.5f)) swr = 9.5f;
   int16_t ycoor1 = (t->maxy1-swr)*t->slopey1;
   int16_t xcoor = (freq-t->minx)*t->slopex;
   if (xcoor < 0) xcoor = 0;
