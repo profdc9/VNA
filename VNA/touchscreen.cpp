@@ -1027,7 +1027,6 @@ void touchscreen_calibrate(void)
 }
 
 void touchscreen_setup() {
-  tcal.iscal = false;
   SPI.begin(); //Initialize the SPI_1 port.
   touchscreen_spi_reset();
   tft.begin(SPI, 18000000ul);

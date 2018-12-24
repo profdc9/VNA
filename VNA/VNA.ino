@@ -228,6 +228,7 @@ void setup() {
   vna_initialize_si5351();
 
 #ifdef VNA_TOUCHSCREEN
+  tcal.iscal = false;
   if (touchscreen_enabled) touchscreen_setup();
 #endif
 
@@ -894,7 +895,7 @@ int sparm_cmd(int args, tinycl_parameter* tp, void *v)
   return 0;
 }
 
-unsigned int flash_pages[] = { 0x08018000u, 0x08019000u, 0x0801A000u, 0x0801B000u, 0x0801C000u, 0x0801D000u, 0x0801E000u, 0x0801F000u };
+const unsigned int flash_pages[] = { 0x08018000u, 0x08019000u, 0x0801A000u, 0x0801B000u, 0x0801C000u, 0x0801D000u, 0x0801E000u, 0x0801F000u };
 #define NUM_FLASH_PAGES ((sizeof(flash_pages)/sizeof(void *)))
 
 int vna_writecal(int n)

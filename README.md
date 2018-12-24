@@ -14,7 +14,7 @@ There are several Arduino libraries that are required for the SI5351A frequency 
 
 ---------------------------------
 
-The VNA may be used with or without a touchscreen.  If a touchscreen it used, it should be compiled with the "VNA_TOUCHSCREEN" defined in VNA.h.
+The VNA may be used with or without a touchscreen.  If a touchscreen it used, it should be compiled with the "VNA_TOUCHSCREEN" defined in VNA.h.  If you do not have a touchscreen, you can ground the pin PB13 and it will start up without a touchscreen, only appearing a USB CDC serial port device.  You can then type "HELP" to see the list of commands.
 
 The touchscreen used is a 2.8" touchscreen with a SPI interface to the ILI9341 and XPT2046.  These are commonly available at a low price.  To connect it to the SPI interface connector header "J1" on the board, use the following pin connections.  I modified Dupont wire jumpers to provide these connections, creating "Y" connectors with these jumpers to join the power and SPI bus lines together.  If a 2.8" size display is used, there are four holes on the PCB, J8, J10, J11, and J12 that may be used to mount the display to the PCB with standoffs, as many displays have this particular mounting hole pattern.
 
