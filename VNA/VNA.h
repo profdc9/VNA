@@ -25,8 +25,7 @@ freely, subject to the following restrictions:
 
 #define VNA_MAX_FREQS 80
 #define VNA_MIN_FREQ 30000u
-#define VNA_MAX_FREQ 470000000u
-#define VNA_AUTO_ATTEN_FREQ 60000000u
+#define VNA_MAX_FREQ 500000000u
 #define VNA_FREQ_3X 180000000u
 #define VNA_NOMINAL_1X_IF_FREQ 10024u
 #define VNA_NOMINAL_3X_IF_FREQ (VNA_NOMINAL_1X_IF_FREQ/3)

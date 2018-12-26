@@ -274,7 +274,7 @@ int touchscreen_thru(int code, void *v)
 
 const touchscreen_button_panel_entry calpanel[] =
 {
-  { 0, 255, 210, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Esc", 2, NULL },
+  { 0, 240, 210, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " Esc ", 2, NULL },
   { 1, 0, 0,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " 1 ", 2, NULL },
   { 2, 0, 30, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " 2 ", 2, NULL },
   { 3, 0, 60, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " 3 ", 2, NULL },
@@ -296,12 +296,6 @@ void touchscreen_displaycal(void)
      vna_calentry(n,s,-(sizeof(s)-1));
      touchscreen_display_block(50,30*(n-1),s,1,0);
    }
-}
-
-int touchscreen_listcal(int code, void *v)
-{
-  touchscreen_displaycal();
-  touchscreen_wait();
 }
 
 int touchscreen_readcal(int code, void *v)
@@ -358,13 +352,12 @@ const touchscreen_button_panel_entry numpanel[] =
   { 9, 160, 100, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " 9 ", 2, NULL },
   { 10, 0, 100, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "ENT", 2, NULL },
   { 11, 0, 150, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "BCK", 2, NULL },
-  { 12, 255, 210, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Esc", 2, NULL },
+  { 12, 240, 210, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " Esc " , 2, NULL },
 };
 
-bool touchscreen_enter_number(const char *c1, const char *c2, unsigned int &number)
+void touchscreen_enter_start(const char *c1, const char *c2)
 {
   tft.fillScreen(ILI9341_BLACK);
-  touchscreen_draw_button_panel(&tft, sizeof(numpanel) / sizeof(touchscreen_button_panel_entry), numpanel);
   tft.setTextSize(2);
   tft.setTextColor(ILI9341_WHITE);
   if (c1 != NULL)
@@ -377,6 +370,12 @@ bool touchscreen_enter_number(const char *c1, const char *c2, unsigned int &numb
     tft.setCursor(0,25);
     tft.print(c2);
   }
+}
+
+bool touchscreen_enter_number(const char *c1, const char *c2, unsigned int &number)
+{
+  touchscreen_enter_start(c1,c2);
+  touchscreen_draw_button_panel(&tft, sizeof(numpanel) / sizeof(touchscreen_button_panel_entry), numpanel);
   number = 0;
   char s[20];
   while (1)
@@ -399,24 +398,45 @@ bool touchscreen_enter_number(const char *c1, const char *c2, unsigned int &numb
   }
 }
 
+const touchscreen_button_panel_entry yesnopanel[] =
+{
+  { 0, 60, 150, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " NO ", 2, NULL },
+  { 1, 160, 150, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " YES ", 2, NULL },
+  { 2, 240, 210, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " Esc ", 2, NULL }
+};
+
+bool touchscreen_enter_yesno(const char *c1, const char *c2, bool &yesno)
+{
+  int n;
+  touchscreen_enter_start(c1,c2);
+  touchscreen_draw_button_panel(&tft, sizeof(yesnopanel) / sizeof(touchscreen_button_panel_entry), yesnopanel);
+  do
+  {
+    n = touchscreen_get_button_press(&tft, sizeof(yesnopanel) / sizeof(touchscreen_button_panel_entry), yesnopanel);
+  } while (n < 0);
+  if (n == 2) return false;
+  yesno = (n == 1);
+  return true; 
+}
+
 int touchscreen_freqs(int code, void *v)
 {
   char s[80];
   unsigned int startfreq, stopfreq, numfreq;
   bool entered;
-  mini_snprintf(s,sizeof(s)-1,"%u to %u",VNA_MIN_FREQ,VNA_MAX_FREQ);
-  entered = touchscreen_enter_number("Start frequency (Hz)",s,startfreq);
+  mini_snprintf(s,sizeof(s)-1,"%u to %u",VNA_MIN_FREQ/1000u,VNA_MAX_FREQ/1000u);
+  entered = touchscreen_enter_number("Start frequency (kHz)",s,startfreq);
   if (!entered) return 0;
-  if ((startfreq < VNA_MIN_FREQ) || (startfreq > VNA_MAX_FREQ))
+  if ((startfreq < (VNA_MIN_FREQ/1000u)) || (startfreq > (VNA_MAX_FREQ/1000u)))
   {
      touchscreen_display_message("Invalid Start\nFrequency");
      touchscreen_wait();  
      return 0;
   }
-  mini_snprintf(s,sizeof(s)-1,"%u to %u",startfreq,VNA_MAX_FREQ);
-  entered = touchscreen_enter_number("Stop frequency (Hz)",s,stopfreq);
+  mini_snprintf(s,sizeof(s)-1,"%u to %u",startfreq,VNA_MAX_FREQ/1000u);
+  entered = touchscreen_enter_number("Stop frequency (kHz)",s,stopfreq);
   if (!entered) return 0;
-  if ((stopfreq < startfreq) || (stopfreq > VNA_MAX_FREQ))
+  if ((stopfreq < startfreq) || (stopfreq > (VNA_MAX_FREQ/1000u)))
   {
      touchscreen_display_message("Invalid Stop\nFrequency");
      touchscreen_wait();  
@@ -431,8 +451,8 @@ int touchscreen_freqs(int code, void *v)
      touchscreen_wait();  
      return 0;
   }
-  vna_set_frequencies(numfreq,startfreq,stopfreq);
-  mini_snprintf(s,sizeof(s)-1,"Range %u Hz\nto %u Hz\n# Freq %u",startfreq,stopfreq,numfreq);
+  vna_set_frequencies(numfreq,startfreq*1000u,stopfreq*1000u);
+  mini_snprintf(s,sizeof(s)-1,"Range %u kHz\nto %u kHz\n# Freq %u",startfreq,stopfreq,numfreq);
   touchscreen_display_message(s);
   touchscreen_wait();  
   return 0;
@@ -907,6 +927,15 @@ int touchscreen_db_scale(int code, void *v)
   touchscreen_axes_db_scale = db_scale;
 }
 
+int touchscreen_atten(int code, void *v)
+{
+  bool attenchoice;
+  if (!touchscreen_enter_yesno("Attenuator On?",NULL,attenchoice)) return 0;
+  vna_state.atten = attenchoice ? 1 : 0;
+  touchscreen_display_message(vna_state.atten == 1 ? "Attenuator On" : "Attenuator Off");
+  touchscreen_wait();   
+}
+
 const touchscreen_button_panel_entry settingspanel[] =
 {
   { 0, 10, 200, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Return to Main Menu", 2, NULL },
@@ -914,7 +943,8 @@ const touchscreen_button_panel_entry settingspanel[] =
   { 300, 160, 40,   4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Averages", 2, touchscreen_averages },
   { 400, 10, 80, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Imped Scale", 2, touchscreen_impedance_scale },
   { 500, 160, 80, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "dB Scale", 2, touchscreen_db_scale },
-  { 600, 10, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Smith", 2, touchscreen_smith }
+  { 600, 10, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Smith", 2, touchscreen_smith },
+  { 700, 160, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Atten", 2, touchscreen_atten }
 };
 
 int touchscreen_settings(int code, void *v)
@@ -947,11 +977,22 @@ const touchscreen_button_panel_entry mainpanel[] =
   { 500, 80, 120, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Short", 2, touchscreen_short },
   { 600, 170, 120, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Load", 2, touchscreen_load },
   { 700, 240, 120, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Thru", 2, touchscreen_thru },
-  { 800, 10, 160, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "ListCal", 2, touchscreen_listcal },
-  { 900, 110, 160, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "ReadCal", 2, touchscreen_readcal },
-  { 1000, 210, 160, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "WriteCal", 2, touchscreen_writecal },
+  { 900, 10, 160, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "ReadCal", 2, touchscreen_readcal },
+  { 1000, 110, 160, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "WriteCal", 2, touchscreen_writecal },
   { 1100, 10, 200, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Touch Scrn Recalibration", 2, touchscreen_recal },
 };
+
+
+void touchscreen_title(void)
+{
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setTextSize(1);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setCursor(90,0);
+  tft.print("VNA-o-mizer by KW4TI");
+  tft.setCursor(60,10);
+  tft.print("(c) 2018 D. Marks, CC-BY-SA 4.0");
+}
 
 void touchscreen_task(void)
 {
@@ -966,6 +1007,7 @@ void touchscreen_task(void)
   {
     panelback = true;
     tft.fillScreen(ILI9341_BLACK);
+    touchscreen_title();
     touchscreen_draw_button_panel(&tft, sizeof(mainpanel) / sizeof(touchscreen_button_panel_entry), mainpanel);
   }
   int16_t cd = touchscreen_get_button_press(&tft, sizeof(mainpanel) / sizeof(touchscreen_button_panel_entry), mainpanel);

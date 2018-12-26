@@ -56,7 +56,7 @@ int pinMapADCVOLTPINin;
 int pinMapADCCUR2PINin;
 
 const vna_flash_header flash_header = { 0xDEADBEEF, 0xC001ACE5 };
-vna_acquisition_state vna_state = {3000000u, 30000000u, 50u, 64, 1000, VNA_MAX_FREQS, 0, 2, VNA_NO_CALIB };
+vna_acquisition_state vna_state = {3000000u, 30000000u, 50u, 64, 1000, VNA_MAX_FREQS, 0, 1, VNA_NO_CALIB };
 vna_calib_oneport *vna_1pt = NULL;
 vna_calib_freq_parm vna_calib[VNA_MAX_FREQS];
 
@@ -326,15 +326,7 @@ int setup_frequency_acquire(unsigned int frequency)
     numphases = 12;
   }
   rcc_clk_disable(RCC_I2C1);
-  switch (vna_state.atten)
-  {
-    case 0:  digitalWrite(ATTEN_PIN, frequency < VNA_AUTO_ATTEN_FREQ ? HIGH : LOW);
-      break;
-    case 1:  digitalWrite(ATTEN_PIN, LOW);
-      break;
-    case 2:  digitalWrite(ATTEN_PIN, HIGH);
-      break;
-  }
+  digitalWrite(ATTEN_PIN, vna_state.atten ? HIGH : LOW);
   return 0;
 }
 
@@ -474,14 +466,14 @@ int debug_cmd(int args, tinycl_parameter* tp, void *v)
   Serial.println(debugmsg_state);
 }
 
-const char *atten_strings[3] = { "0 Auto", "1 Off", "2 On" };
+const char *atten_strings[3] = { "0 Off", "1 On" };
 
 int atten_cmd(int args, tinycl_parameter* tp, void *v)
 {
   int n = tp[0].ti.i;
   vna_acquisition_state *vs = &vna_state;
 
-  if ((n < 0) || (n > 2))
+  if ((n < 0) || (n > 1))
   {
     Serial.println("Invalid attenuator setting");
     return 0;
@@ -697,7 +689,11 @@ int vna_twocalib_dataset_operation(vna_acquire_dataset_state *vads, void *va)
 int vna_thrucal(void)
 {
   if (!(vna_state.calib_state & VNA_VALID_CALIB_1PT)) return 0;
-  if (!vna_acquire_dataset(&vna_state, vna_twocalib_dataset_operation, NULL)) return 1;
+  if (!vna_acquire_dataset(&vna_state, vna_twocalib_dataset_operation, NULL))
+  {
+    vna_state.calib_state &= ~VNA_VALID_CALIB_2PT;
+    return 1;
+  }
   vna_state.calib_state |= VNA_VALID_CALIB_2PT;
   return 2;
 }
@@ -802,7 +798,7 @@ int acq_cmd(int args, tinycl_parameter* tp, void *v)
   {
     case 0: Serial.println("Can only be performed after 1 or 2 port calibration");
             break;
-    case 1: Serial.println("Calibration aborted");
+    case 1: Serial.println("Acquisition aborted");
             break;
     case 2: Serial.println("-----");
             break;
@@ -887,7 +883,7 @@ int sparm_cmd(int args, tinycl_parameter* tp, void *v)
   {
     case 0: Serial.println("Can only be performed after 1 or 2 port calibration");
             break;
-    case 1: Serial.println("Calibration aborted");
+    case 1: Serial.println("Acquisition aborted");
             break;
     case 2: Serial.println("-----");
             break;
@@ -1053,8 +1049,7 @@ const tinycl_command tcmds[] =
   { "SHORT", "Short Calibration", shortcalib_cmd, TINYCL_PARM_END },
   { "OPEN", "Open Calibration", opencalib_cmd, TINYCL_PARM_END },
   { "LOAD", "Load Calibration", loadcalib_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
-  { "TWOCAL", "Two Port Calibration", twocalib_cmd, TINYCL_PARM_END },
-  { "THRU", "Also Two Port Calibration", twocalib_cmd, TINYCL_PARM_END },
+  { "THRU", "Two Port Calibration", twocalib_cmd, TINYCL_PARM_END },
   { "LISTCAL", "List Calibration States", listcal_cmd, TINYCL_PARM_END },
   { "WRITECAL", "Write Calibration State", writecal_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
   { "READCAL", "Read Calibration State", readcal_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
