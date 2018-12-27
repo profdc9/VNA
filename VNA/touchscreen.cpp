@@ -37,21 +37,6 @@ Adafruit_ILI9341_STM tft = Adafruit_ILI9341_STM(TFT_CS, TFT_DC);
 
 touchscreen_calibration tcal;
 
-/***************************************************
-  This is our GFX example for the Adafruit ILI9341 Breakout and Shield
-  ----> http://www.adafruit.com/products/1651
-
-  Check out the links above for our tutorials and wiring diagrams
-  These displays use SPI to communicate, 4 or 5 pins are required to
-  interface (RST is optional)
-  Adafruit invests time and resources providing this open source code,
-  please support Adafruit and open-source hardware by purchasing
-  products from Adafruit!
-
-  Written by Limor Fried/Ladyada for Adafruit Industries.
-  MIT license, all text above must be included in any redistribution
- ****************************************************/
-
 void touchscreen_spi_reset(void)
 {
   SPI.beginTransaction(SPISettings(180000000ul, MSBFIRST, SPI_MODE0, DATA_SIZE_16BIT));
@@ -465,6 +450,7 @@ int touchscreen_recal(int code, void *v)
 }
 
 #define TOUCHSCREEN_SMITH_RADIUS 0.45f
+#define TOUCHSCREEN_BOTTOM_LINES 24
 
 typedef struct _touchscreen_axes_parameters
 {
@@ -476,28 +462,22 @@ typedef struct _touchscreen_axes_parameters
   int16_t w, h;
   int16_t lastx, lasty1, lasty2;
   unsigned char port;
+
+  Complex *axis_data;
+  int16_t num_axis_data;
+  const char *format_string;
 } touchscreen_axes_parameters;
 
-float pow10f(int p)
-{
-  float f = 1.0f;
-  while (p>0)
-  {
-    p--;
-    f = f * 10.0f;
-  }
-  while (p<0)
-  {
-    p++;
-    f = f * 0.1f;
-  }
-  return f;
-}
+
+bool touchscreen_smith_chart = false;
+float touchscreen_axes_impedance_scale = 500.0f;
+float touchscreen_axes_db_scale = 50.0f;
+touchscreen_axes_parameters taps;
 
 void touchscreen_round_spacing(int minticks, float minval, float maxval, float &stepspace, float &minrnd, float &maxrnd, int16_t &dec)
 {
   float dif = maxval-minval;
-  stepspace = pow10f((int)floorf(logf(dif)/logf(10.0f)));
+  stepspace = ipow10f((int)floorf(logf(dif)/logf(10.0f)));
   if ((dif / stepspace) < minticks) stepspace *= 0.5f;  
   if ((dif / stepspace) < minticks) stepspace *= 0.4f; 
   dec =  -((int)floorf(logf(stepspace)/logf(10.0f)));
@@ -506,41 +486,58 @@ void touchscreen_round_spacing(int minticks, float minval, float maxval, float &
   maxrnd = floorf(maxval/stepspace)*stepspace;
 }
 
-char *mini_ftoa(float f, int dec, char *s, int len)
+void touchscreen_allocate_axis_data(const char *format_string)
 {
-  char *last = s+len;
-  *(--last) = '\000';
-  unsigned int temp;
-  
-  bool neg = false;
-  if (f < 0)
+  taps.num_axis_data = -1;
+  if (taps.axis_data != NULL) free(taps.axis_data);
+  taps.axis_data = NULL;
+  taps.format_string = format_string;
+}
+
+void touchscreen_free_axis_data(void)
+{
+  if (taps.axis_data != NULL) free(taps.axis_data);
+  taps.axis_data = NULL;
+}
+
+void touchscreen_set_axis_data(int n, int total, const Complex &c)
+{
+  if (taps.num_axis_data == -1)
   {
-    f = -f;
-    neg = true;
+     taps.num_axis_data = total;
+     taps.axis_data = (Complex *)malloc(sizeof(Complex)*total);
   }
-  if (dec > 0)
+  if (taps.axis_data != NULL)
+     taps.axis_data[n] = c;
+}
+
+void touchscreen_touch_axis(void)
+{
+  char s[80];
+  int16_t h = tft.height()-TOUCHSCREEN_BOTTOM_LINES;
+  int16_t w = tft.width();
+  int n = taps.num_axis_data / 2;
+  for (;;)
   {
-    temp = floorf(pow10f(dec)*(f-floorf(f)));
-    while (dec > 0)
-    {
-       dec--;
-       if (last > s)
-          *(--last) = '0' + (temp % 10);
-       temp /= 10;
-    }
-    if (last > s)
-      *(--last) = '.';
+      int16_t xp, yp, zp;
+      tft.fillRect(0, h, tft.width(), TOUCHSCREEN_BOTTOM_LINES, ILI9341_BLACK);
+      tft.setTextSize(1);
+      tft.setTextColor(ILI9341_WHITE);
+      n = (n < 0) ? 0 : n;
+      n = (n >= taps.num_axis_data) ? taps.num_axis_data - 1 : n;        
+      float xaxis = ((taps.maxx-taps.minx)*n)/((float)taps.num_axis_data)+taps.minx;
+      int col = n*((int)w)/((int)taps.num_axis_data);
+      tft.writeFastVLine(col, h, TOUCHSCREEN_BOTTOM_LINES, ILI9341_GREEN);
+      tft.setCursor(0,h+8);
+      mini_snprintf(s,sizeof(s)-1,taps.format_string,float2int32(xaxis),float2int32(taps.axis_data[n].real),float2int32(taps.axis_data[n].imag));
+      tft.print(s);  
+      tft.setCursor(250,h+8);
+      tft.print("Tap Escape");
+      while (!touchscreen_solid_press(xp, yp, zp, true));
+      if (yp >= h) break;
+      n += (8*(xp-w/2))/w;
   }
-  temp = floorf(f);
-  do
-  {
-     if (last > s)
-         *(--last) = '0' + (temp % 10);
-     temp /= 10;
-  } while (temp > 0);
-  if ((neg) && (last > s))
-    *(--last) = '-';
-  return last;  
+  touchscreen_wait();
 }
 
 int touchscreen_draw_smith_chart(Adafruit_GFX *gfx, touchscreen_axes_parameters *t)
@@ -581,12 +578,14 @@ int touchscreen_draw_smith_chart(Adafruit_GFX *gfx, touchscreen_axes_parameters 
   gfx->setCursor(0,0);
   gfx->print("Start Frequency");
   gfx->setCursor(0,10);
-  gfx->print(mini_ftoa(t->minx,0,s,sizeof(s)-1));
+  mini_ftoa(t->minx,0,s,sizeof(s)-1);
+  gfx->print(s);
   gfx->setTextColor(ILI9341_RED);
   gfx->setCursor(0,20);
   gfx->print("Stop Frequency");
   gfx->setCursor(0,30);
-  gfx->print(mini_ftoa(t->maxx,0,s,sizeof(s)-1));
+  mini_ftoa(t->maxx,0,s,sizeof(s)-1);
+  gfx->print(s);
 }
 
 int touchscreen_draw_axes(Adafruit_GFX *gfx, touchscreen_axes_parameters *t)
@@ -594,7 +593,7 @@ int touchscreen_draw_axes(Adafruit_GFX *gfx, touchscreen_axes_parameters *t)
   float f;
   char s[40];
   t->w = gfx->width();
-  t->h = gfx->height();
+  t->h = gfx->height() - TOUCHSCREEN_BOTTOM_LINES;
   t->slopex = ((float)t->w)/(t->maxx - t->minx);
   t->slopey1 = ((float)t->h)/(t->maxy1 - t->miny1);
   touchscreen_round_spacing(5, t->minx, t->maxx, t->stepspacex, t->minrndx, t->maxrndx, t->dec);
@@ -608,17 +607,16 @@ int touchscreen_draw_axes(Adafruit_GFX *gfx, touchscreen_axes_parameters *t)
   gfx->setTextColor(ILI9341_DARKGREY);
   for (f=t->minrndx;f<=t->maxrndx;f+=t->stepspacex)
   {
-    char *c = mini_ftoa(f,t->dec,s,sizeof(s)-1);
-    int l = strlen(c);
+    int len = mini_ftoa(f,t->dec,s,sizeof(s)-1);
     int i;
     int16_t hval = (f-t->minx)*t->slopex;
     gfx->writeFastVLine(hval, 0, t->h, ILI9341_DARKGREY);
     if (hval > 10)
     {
-      for (int i=0;i<l;i++)
+      for (int i=0;i<len;i++)
       {
-        gfx->setCursor(hval-10,t->h+8*(i-l));
-        gfx->print(c[i]);
+        gfx->setCursor(hval-10,t->h+8*(i-len));
+        gfx->print(s[i]);
       }
     }
   }
@@ -630,7 +628,8 @@ int touchscreen_draw_axes(Adafruit_GFX *gfx, touchscreen_axes_parameters *t)
     if (vval >= 12)
     {
       gfx->setCursor(0,vval-12);
-      gfx->print(mini_ftoa(f,t->dec1,s,sizeof(s)-1));
+      mini_ftoa(f,t->dec1,s,sizeof(s)-1);
+      gfx->print(s);
     }
   }
   gfx->setCursor(2,2);
@@ -640,24 +639,19 @@ int touchscreen_draw_axes(Adafruit_GFX *gfx, touchscreen_axes_parameters *t)
      gfx->setTextColor(ILI9341_BLUE);
      for (f=t->minrndy2;f<=t->maxrndy2;f+=t->stepspacey2)
      {
-       char *c = mini_ftoa(f,t->dec2,s,sizeof(s)-1);
+       int len = mini_ftoa(f,t->dec2,s,sizeof(s)-1);
        int16_t vval = (t->maxy2-f)*t->slopey2;
        gfx->writeFastHLine(0, vval, t->w, ILI9341_BLUE);
        if (vval >= 12)
        {
-         gfx->setCursor(t->w- 6*strlen(c),vval-12);
-         gfx->print(c);
+         gfx->setCursor(t->w-6*len,vval-12);
+         gfx->print(s);
        }
      }
     gfx->setCursor(t->w - 6*strlen(t->axislabel2),2);
     gfx->print(t->axislabel2);
   }
 }
-
-bool touchscreen_smith_chart = false;
-float touchscreen_axes_impedance_scale = 500.0f;
-float touchscreen_axes_db_scale = 50.0f;
-touchscreen_axes_parameters taps;
 
 int touchscreen_smith(int code, void *v)
 {
@@ -676,6 +670,7 @@ int touchscreen_rtr_swr_display(int n, int total, unsigned int freq, bool ch2, C
   Complex ref = (imp-z0)/(imp+z0);
   float swr = ref.absv();
   swr = (1.0f+swr)/(1.0f-swr);
+  touchscreen_set_axis_data(n, total, Complex(swr));
   if ((swr > 0.5) && (swr < 1.0f)) swr = 1.0f;
   if ((swr <= 0.5) || (swr > 9.5f)) swr = 9.5f;
   int16_t ycoor1 = (t->maxy1-swr)*t->slopey1;
@@ -698,6 +693,7 @@ int touchscreen_swr(int code, void *v)
   taps.maxy1 = 9.5f;
   taps.axislabel1 = "SWR";
   taps.axislabel2 = NULL;
+  touchscreen_allocate_axis_data("%f: SWR %02f");
   tft.fillScreen(ILI9341_BLACK);
   touchscreen_draw_axes(&tft,&taps);
   taps.lasty1 = -1;
@@ -705,11 +701,15 @@ int touchscreen_swr(int code, void *v)
   switch (vna_acquire_impedance(touchscreen_rtr_swr_display))
   {
     case 0: touchscreen_display_message("Can only be\nperformed after 1\nor 2 port calibration");
+            touchscreen_wait();  
             break;
     case 1: touchscreen_display_message("Acquisition aborted");
+            touchscreen_wait();  
+            break;
+    case 2: touchscreen_touch_axis();
             break;
   } 
-  touchscreen_wait();  
+  touchscreen_free_axis_data();
   return 0;
 }
 
@@ -722,10 +722,12 @@ int touchscreen_rtr_zacq_display(int n, int total, unsigned int freq, bool ch2, 
   {
     ycoor1 = (t->maxy1-imp.real)*t->slopey1;
     ycoor2 = (t->maxy2-imp.imag)*t->slopey2;
+    touchscreen_set_axis_data(n, total, imp);
   } else
   {
     ycoor1 = (t->maxy1-zthru.real)*t->slopey1;
     ycoor2 = (t->maxy2-zthru.imag)*t->slopey2;    
+    touchscreen_set_axis_data(n, total, zthru);
   }
   if (xcoor < 0) xcoor = 0;
   if (xcoor >= t->w) xcoor = t->w-1;
@@ -760,19 +762,23 @@ int touchscreen_zacq(int code, void *v)
   taps.maxy2 = touchscreen_axes_impedance_scale;
   taps.axislabel2 = "Imag";
   tft.fillScreen(ILI9341_BLACK);
+  touchscreen_allocate_axis_data("%f: Z(%03f,%03f)");
   touchscreen_draw_axes(&tft,&taps);
   taps.lasty1 = -1;
   taps.lasty2 = -1;
   switch (vna_acquire_impedance(touchscreen_rtr_zacq_display))
   {
     case 0: touchscreen_display_message("Can only be\nperformed after 1\nor 2 port calibration");
+            touchscreen_wait();  
             break;
     case 1: touchscreen_display_message("Acquisition aborted");
+            touchscreen_wait();  
             break;
     case 2: touchscreen_draw_axes(&tft,&taps);
+            touchscreen_touch_axis();
             break;
   } 
-  touchscreen_wait();  
+  touchscreen_free_axis_data();
   return 0;
 }
 
@@ -803,10 +809,12 @@ int touchscreen_rtr_sparm_display(int n, int total, unsigned int freq, bool ch2,
      {
        ycoor1 = (t->maxy1-s11db)*t->slopey1;
        ycoor2 = (t->maxy2-s11deg)*t->slopey2;    
+       touchscreen_set_axis_data(n, total, Complex(s11db,s11deg));
      } else
      {
        ycoor1 = (t->maxy1-s21db)*t->slopey1;
        ycoor2 = (t->maxy2-s21deg)*t->slopey2;    
+       touchscreen_set_axis_data(n, total, Complex(s21db,s21deg));
      }
      line1_color = ILI9341_RED;
   }
@@ -842,6 +850,7 @@ int touchscreen_sparm(int code, void *v)
   taps.miny2 = -180.0f;
   taps.maxy2 = 180.0f;
   taps.axislabel2 = "Phase";
+  touchscreen_allocate_axis_data("%f: %03f dB %03f degs");
   tft.fillScreen(ILI9341_BLACK);
   if (touchscreen_smith_chart)
       touchscreen_draw_smith_chart(&tft,&taps);
@@ -852,16 +861,24 @@ int touchscreen_sparm(int code, void *v)
   switch (vna_acquire_sparm(touchscreen_rtr_sparm_display))
   {
     case 0: touchscreen_display_message("Can only be\nperformed after 1\nor 2 port calibration");
+            touchscreen_wait();  
             break;
     case 1: touchscreen_display_message("Acquisition aborted");
+            touchscreen_wait();  
             break;
     case 2: if (touchscreen_smith_chart)
+            {
                 touchscreen_draw_smith_chart(&tft,&taps);
+                touchscreen_wait();
+            }
             else
+            {
                 touchscreen_draw_axes(&tft,&taps);
+                touchscreen_touch_axis();
+            }
             break;
   }
-  touchscreen_wait();  
+  touchscreen_free_axis_data();
   return 0;
 }
 
@@ -869,9 +886,9 @@ int touchscreen_char_impedance(int code, void *v)
 {
   unsigned int char_imped;
   bool entered;
-  entered = touchscreen_enter_number("Characteristic Imped","1 to 100000 Ohms",char_imped);
+  entered = touchscreen_enter_number("Characteristic Imped","1 to 60000 Ohms",char_imped);
   if (!entered) return 0;
-  if ((char_imped < 1) || (char_imped > 100000))
+  if ((char_imped < 1) || (char_imped > 60000))
   {
      touchscreen_display_message("Invalid Impedance\nScale");
      touchscreen_wait();  
@@ -936,15 +953,26 @@ int touchscreen_atten(int code, void *v)
   touchscreen_wait();   
 }
 
+
+int touchscreen_series(int code, void *v)
+{
+  bool serieschoice;
+  if (!touchscreen_enter_yesno("2-Port Impedance Series?","NO=Series,YES=Shunt",serieschoice)) return 0;
+  vna_state.series_shunt_two = serieschoice ? 1 : 0;
+  touchscreen_display_message(vna_state.series_shunt_two == 1 ? "2-Port Shunt" : "2-Port Series");
+  touchscreen_wait();   
+}
+
 const touchscreen_button_panel_entry settingspanel[] =
 {
-  { 0, 10, 200, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Return to Main Menu", 2, NULL },
-  { 200, 10, 40,   4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Char Imped", 2, touchscreen_char_impedance },
-  { 300, 160, 40,   4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Averages", 2, touchscreen_averages },
-  { 400, 10, 80, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Imped Scale", 2, touchscreen_impedance_scale },
-  { 500, 160, 80, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "dB Scale", 2, touchscreen_db_scale },
-  { 600, 10, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Smith", 2, touchscreen_smith },
-  { 700, 160, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Atten", 2, touchscreen_atten }
+  { 0, 0, 200, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Return to Main Menu", 2, NULL },
+  { 200, 0, 40,   4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Char Imped", 2, touchscreen_char_impedance },
+  { 300, 150, 40,   4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Averages", 2, touchscreen_averages },
+  { 400, 0, 80, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Imped Scale", 2, touchscreen_impedance_scale },
+  { 500, 150, 80, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "dB Scale", 2, touchscreen_db_scale },
+  { 600, 0, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Smith", 2, touchscreen_smith },
+  { 700, 80, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Atten", 2, touchscreen_atten },
+  { 800, 160, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Series/Shunt", 2, touchscreen_series }
 };
 
 int touchscreen_settings(int code, void *v)

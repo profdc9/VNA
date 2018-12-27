@@ -56,7 +56,7 @@ int pinMapADCVOLTPINin;
 int pinMapADCCUR2PINin;
 
 const vna_flash_header flash_header = { 0xDEADBEEF, 0xC001ACE5 };
-vna_acquisition_state vna_state = {3000000u, 30000000u, 50u, 64, 1000, VNA_MAX_FREQS, 0, 1, VNA_NO_CALIB };
+vna_acquisition_state vna_state = {3000000u, 30000000u, 50u, 64, 1000, VNA_MAX_FREQS, 0, 1, 0, 0, VNA_NO_CALIB };
 vna_calib_oneport *vna_1pt = NULL;
 vna_calib_freq_parm vna_calib[VNA_MAX_FREQS];
 
@@ -471,16 +471,32 @@ const char *atten_strings[3] = { "0 Off", "1 On" };
 int atten_cmd(int args, tinycl_parameter* tp, void *v)
 {
   int n = tp[0].ti.i;
-  vna_acquisition_state *vs = &vna_state;
 
   if ((n < 0) || (n > 1))
   {
-    Serial.println("Invalid attenuator setting");
+    Serial.println("Invalid setting");
     return 0;
   }
-  vs->atten = n;
+  vna_state.atten = n;
   Serial.print("atten=");
-  Serial.println(atten_strings[vs->atten]);
+  Serial.println(atten_strings[vna_state.atten]);
+  return 1;
+}
+
+const char *series_shunt_strings[3] = { "0 Series", "1 Shunt" };
+
+int shunt_cmd(int args, tinycl_parameter* tp, void *v)
+{
+  int n = tp[0].ti.i;
+
+  if ((n < 0) || (n > 1))
+  {
+    Serial.println("Invalid setting");
+    return 0;
+  }
+  vna_state.series_shunt_two = n;
+  Serial.print("impedance-mode=");
+  Serial.println(series_shunt_strings[vna_state.series_shunt_two]);
   return 1;
 }
 
@@ -780,10 +796,23 @@ int vna_display_acq_operation(vna_acquire_dataset_state *vads, void *va)
   {
     Complex curpt2((float)vads->cur2i, (float)vads->cur2q);
     curpt2 = curpt2 - vc->s2 * ((float)vna_state.num_averages);
-    zthru = (vn - curpt2 * vc->z2) / (curpt2 * vc->i2);
+    if (vna_state.series_shunt_two)
+    {
+       zthru = (curpt2 * vc->z2) / (in - curpt2 * vc->i2);     
+    } else
+    {
+      zthru = (vn - curpt2 * vc->z2) / (curpt2 * vc->i2);
+    }
   }
   ((vna_report_trans_reflected)va)(vads->n,vads->total,vads->freq,(vna_state.calib_state & VNA_VALID_CALIB_2PT) != 0,imp.conj(),zthru.conj());
 }
+
+//   another way to calculate shunt/series impedance
+//    float z0 = (float)vna_state.char_impedance;
+//    Complex s21;
+//    s21 = curpt2 * (vc->z2 + vc->i2 * z0) / (vn + in * z0);
+//        zthru = (s21/(s21 - 1.0f)) * z0 * (-0.5f);  shunt
+//        zthru = ((s21 - 1.0f)/s21) * z0 * (-2.0f);  series
 
 int vna_acquire_impedance(vna_report_trans_reflected vrtr)
 {
@@ -1046,6 +1075,7 @@ const tinycl_command tcmds[] =
   { "DOACQ", "Do Acquisition Parameters", doacq_cmd, TINYCL_PARM_END },
   { "ACQ", "Acquisition of Ref/Thru", acq_cmd, TINYCL_PARM_END },
   { "SPARM", "Acquisition of Ref/Thru S parameters", sparm_cmd, TINYCL_PARM_END },
+  { "SHUNT", "Series/Shunt 2 Port Impedance", shunt_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
   { "SHORT", "Short Calibration", shortcalib_cmd, TINYCL_PARM_END },
   { "OPEN", "Open Calibration", opencalib_cmd, TINYCL_PARM_END },
   { "LOAD", "Load Calibration", loadcalib_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },

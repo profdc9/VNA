@@ -43,6 +43,69 @@
 
 #include "mini-printf.h"
 
+#ifdef MINI_PRINTF_FTOA
+float ipow10f(int p)
+{
+  float f = 1.0f;
+  while (p>0)
+  {
+    p--;
+    f = f * 10.0f;
+  }
+  while (p<0)
+  {
+    p++;
+    f = f * 0.1f;
+  }
+  return f;
+}
+
+unsigned int mini_ftoa(float f, int dec, char *s, int len)
+{
+  char *last = s+len, *back;
+  unsigned int temp;
+
+  *(--last) = '\000';
+  int negative = 0;
+  if (f < 0)
+  {
+    f = -f;
+    negative = 1;
+  }
+  if (dec > 0)
+  {
+    temp = floorf(ipow10f(dec)*(f-floorf(f)));
+    while (dec > 0)
+    {
+       dec--;
+       if (last > s)
+          *(--last) = '0' + (temp % 10);
+       temp /= 10;
+    }
+    if (last > s)
+      *(--last) = '.';
+  }
+  temp = floorf(f);
+  do
+  {
+     if (last > s)
+         *(--last) = '0' + (temp % 10);
+     temp /= 10;
+  } while (temp > 0);
+  if ((negative) && (last > s))
+    *(--last) = '-';
+  back = s;
+  len = 0;
+  while (*last != '\0')
+  {
+    *back++ = *last++;
+    len++;
+  }
+  *back = '\0';
+  return len;  
+}
+#endif
+
 static unsigned int
 mini_strlen(const char *s)
 {
@@ -162,6 +225,12 @@ mini_vsnprintf(char *buffer, unsigned int buffer_len, const char *fmt, va_list v
 			switch (ch) {
 				case 0:
 					goto end;
+#ifdef MINI_PRINTF_FTOA
+        case 'f':
+          len = mini_ftoa(int32float(va_arg(va, float32int)), zero_pad, bf, sizeof(bf)-1);
+          _puts(bf, len, &b);
+          break;
+#endif
 				case 'u':
 				case 'd':
 					len = mini_itoa(va_arg(va, unsigned int), 10, 0, (ch=='u'), bf, zero_pad);

@@ -25,7 +25,7 @@ freely, subject to the following restrictions:
 
 #define VNA_MAX_FREQS 80
 #define VNA_MIN_FREQ 30000u
-#define VNA_MAX_FREQ 500000000u
+#define VNA_MAX_FREQ 540000000u
 #define VNA_FREQ_3X 180000000u
 #define VNA_NOMINAL_1X_IF_FREQ 10024u
 #define VNA_NOMINAL_3X_IF_FREQ (VNA_NOMINAL_1X_IF_FREQ/3)
@@ -60,12 +60,14 @@ typedef struct _vna_acquisition_state
 {
   unsigned int startfreq;
   unsigned int endfreq;
-  unsigned int char_impedance;
+  unsigned short char_impedance;
   unsigned short num_averages;
   unsigned short timeout;
   unsigned short nfreqs;
   unsigned char csv;
   unsigned char atten;
+  unsigned char series_shunt_two;
+  unsigned char temp;
   unsigned short calib_state;
 } vna_acquisition_state;
 
