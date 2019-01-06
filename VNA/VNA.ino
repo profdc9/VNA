@@ -280,11 +280,7 @@ int acquire_sample(unsigned int averages, unsigned int timeout)
       break;
     }
   }
-  if (timedout)
-  {
-    Serial.println("ACQ: Timeout waiting for last acquisition");
-    return -1;
-  }
+  if (timedout) return -1;
   number_to_sum = averages;
   current_summed = 0;
   /* wait for previous acquisition to stop */
@@ -299,11 +295,7 @@ int acquire_sample(unsigned int averages, unsigned int timeout)
       break;
     }
   }
-  if (timedout)
-  {
-    Serial.println("ACQ: Timeout waiting for acquisition");
-    return -1;
-  }
+  if (timedout) return -1;
   return 0;
 }
 
@@ -446,6 +438,7 @@ int averages_cmd(int args, tinycl_parameter* tp, void *v)
   Serial.println(vna_state.num_averages);
   Serial.print("Timeout=");
   Serial.println(vna_state.timeout);
+  return 1;
 }
 
 int csv_cmd(int args, tinycl_parameter* tp, void *v)
@@ -455,6 +448,7 @@ int csv_cmd(int args, tinycl_parameter* tp, void *v)
   vs->csv = tp[0].ti.i;
   Serial.print("CSV=");
   Serial.println(vs->csv);
+  return 1;
 }
 
 int debug_cmd(int args, tinycl_parameter* tp, void *v)
@@ -464,6 +458,7 @@ int debug_cmd(int args, tinycl_parameter* tp, void *v)
   setDebugMsgMode(tp[0].ti.i);
   Serial.print("DEBUG=");
   Serial.println(debugmsg_state);
+  return 1;
 }
 
 const char *atten_strings[3] = { "0 Off", "1 On" };
@@ -475,7 +470,7 @@ int atten_cmd(int args, tinycl_parameter* tp, void *v)
   if ((n < 0) || (n > 1))
   {
     Serial.println("Invalid setting");
-    return 0;
+    return 1;
   }
   vna_state.atten = n;
   Serial.print("atten=");
@@ -492,7 +487,7 @@ int shunt_cmd(int args, tinycl_parameter* tp, void *v)
   if ((n < 0) || (n > 1))
   {
     Serial.println("Invalid setting");
-    return 0;
+    return 1;
   }
   vna_state.series_shunt_two = n;
   Serial.print("impedance-mode=");
@@ -505,6 +500,7 @@ int doacq_cmd(int args, tinycl_parameter* tp, void *v)
   int n;
   vna_acquisition_state *vs = &vna_state;
   vna_acquire_dataset(vs, vna_display_dataset_operation, NULL);
+  return 1;
 }
 
 int vna_set_frequencies(unsigned int nfreqs, unsigned int startfreq, unsigned int endfreq)
@@ -529,7 +525,7 @@ int setacq_cmd(int args, tinycl_parameter* tp, void *v)
   if (!vna_set_frequencies(nfreqs, startfreq, endfreq))
   {
       Serial.println("Invalid Parameters");
-      return 0;
+      return 1;
   }
   Serial.print("Start Frequency = ");
   Serial.println(vna_state.startfreq);
@@ -539,6 +535,7 @@ int setacq_cmd(int args, tinycl_parameter* tp, void *v)
   Serial.println(vna_state.nfreqs);
   if (statereset)
     Serial.println("Calibration state reset");
+  return 1;
 }
 
 int imacq_cmd(int args, tinycl_parameter* tp, void *v)
@@ -550,15 +547,15 @@ int imacq_cmd(int args, tinycl_parameter* tp, void *v)
   if (vs.nfreqs < 1)
   {
     Serial.println("Invalid number of frequencies");
-    return -1;
+    return 1;
   }
   if ((vs.startfreq < VNA_MIN_FREQ) || (vs.endfreq < vs.startfreq) && (vs.endfreq > VNA_MAX_FREQ))
   {
     Serial.println("Invalid maximum or minimum frequency");
-    return -1;
+    return 1;
   }
   vna_acquire_dataset(&vs, vna_display_dataset_operation, NULL);
-  return 0;
+  return 1;
 }
 
 int vna_open_dataset_operation(vna_acquire_dataset_state *vads, void *va)
@@ -629,14 +626,14 @@ int opencalib_cmd(int args, tinycl_parameter* tp, void *v)
   switch (vna_opencalib())
   {
     case 0: Serial.println("Calibration aborted");
-            return -1;
+            return 1;
             break;
     case 1: Serial.println("\r\nOpen calibration successful");
             break;
     case 2: Serial.println("\r\n1 Port calibration successful");
             break;
   }
-  return 0;
+  return 1;
 }
 
 int vna_shortcalib(void)
@@ -653,14 +650,14 @@ int shortcalib_cmd(int args, tinycl_parameter* tp, void *v)
   switch (vna_shortcalib())
   {
     case 0: Serial.println("Calibration aborted");
-            return -1;
+            return 1;
             break;
     case 1: Serial.println("\r\nShort calibration successful");
             break;
     case 2: Serial.println("\r\n1 Port calibration successful");
             break;
   }
-  return 0;
+  return 1;
 }
 
 int vna_loadcalib(void)
@@ -678,14 +675,14 @@ int loadcalib_cmd(int args, tinycl_parameter* tp, void *v)
   switch (vna_loadcalib())
   {
     case 0: Serial.println("Calibration aborted");
-            return -1;
+            return 1;
             break;
     case 1: Serial.println("\r\nLoad calibration successful");
             break;
     case 2: Serial.println("\r\n1 Port calibration successful");
             break;
   }
-  return 0;
+  return 1;
 }
 
 int vna_twocalib_dataset_operation(vna_acquire_dataset_state *vads, void *va)
@@ -726,7 +723,7 @@ int twocalib_cmd(int args, tinycl_parameter* tp, void *v)
     case 2:  Serial.println("\r\nTwo port calibration successful");
             break;
   }
-  return 0;
+  return 1;
 }
 
 void printfloat(float f)
@@ -832,7 +829,7 @@ int acq_cmd(int args, tinycl_parameter* tp, void *v)
     case 2: Serial.println("-----");
             break;
   }
-  return 0;
+  return 1;
 }
 
 int vna_rtr_sparm_display(int n, int total, unsigned int freq, bool ch2, Complex s11, Complex s21)
@@ -917,7 +914,7 @@ int sparm_cmd(int args, tinycl_parameter* tp, void *v)
     case 2: Serial.println("-----");
             break;
   }
-  return 0;
+  return 1;
 }
 
 const unsigned int flash_pages[] = { 0x08018000u, 0x08019000u, 0x0801A000u, 0x0801B000u, 0x0801C000u, 0x0801D000u, 0x0801E000u, 0x0801F000u };
@@ -955,12 +952,12 @@ int writecal_cmd(int args, tinycl_parameter* tp, void *v)
   if ((n < 1) || (n > NUM_FLASH_PAGES))
   {
     Serial.println("Invalid calibration number");
-    return -1;
+    return 1;
   }
   Serial.print("Writing calibration ");
   Serial.print(n);
   Serial.println(vna_writecal(n) ? ": written" : ": failed");
-  return 0;
+  return 1;
 }
 
 int vna_readcal(int n)
@@ -1002,7 +999,7 @@ int readcal_cmd(int args, tinycl_parameter* tp, void *v)
   if ((n < 1) || (n > NUM_FLASH_PAGES))
   {
     Serial.println("Invalid calibration number");
-    return -1;
+    return 1;
   }
   if (vna_readcal(n))
   {
@@ -1010,7 +1007,7 @@ int readcal_cmd(int args, tinycl_parameter* tp, void *v)
     Serial.println(n);
   } else
     Serial.println("No calibration to retrieve");
-  return 0;
+  return 1;
 }
 
 int vna_calentry(int n, char *s, int len)
@@ -1062,6 +1059,85 @@ int listcal_cmd(int args, tinycl_parameter* tp, void *v)
     Serial.println(s);
   }
   Serial.println("-----");
+  return 1;
+}
+
+unsigned int get_number_serial()
+{
+  unsigned int num = 0;
+
+  for (;;)
+  {
+    int c;
+    while ((c = Serial.read()) == -1);
+    if ((c >= '0') && (c <= '9')) num = num*10 + c - '0';
+    if (c == '\r') break;
+  }
+  return num;
+}
+
+const uint8 four_blanks[4] = {0xFF,0x03,0xFF,0x03};
+
+unsigned char vna_rtr_remote_cmd_port;
+unsigned short vna_rtr_remote_cmd_samples;
+
+int vna_rtr_remote_cmd(int n, int total, unsigned int freq, bool ch2, Complex s11, Complex s21)
+{
+  uint8_t b[4];
+  float db, deg;
+  if (vna_rtr_remote_cmd_samples >= total)
+    return 0;
+  if (vna_rtr_remote_cmd_port == 1) s11 = s21;
+  db = (10.0f / logf(10.0f)) * logf(s11.absq());
+  deg = RAD2DEG(s11.arg());
+  short dbint = 344.0f-db*17.0f;
+  short degint = (deg < 0.0f ? 360.0f+deg : deg)*(1024.0f/180.0f);
+  dbint = (dbint < 0) ? 0 : dbint;
+  degint = (degint < 5) ? 5 : degint;
+  degint = (degint > 2042) ? 2042 : degint;
+  b[0] = degint & 0xFF;
+  b[1] = degint >> 8;
+  b[2] = dbint & 0xFF;
+  b[3] = dbint >> 8;
+  Serial.write((const uint8_t *)b,sizeof(b));
+  vna_rtr_remote_cmd_samples++;
+}
+
+#define VNA_FREQUENCY_TUNING_CONVERSION_NUMERATOR   ((uint64_t)100000000)
+#define VNA_FREQUENCY_TUNING_CONVERSION_DENOMINATOR ((uint64_t)1073741824)
+
+// huge hack, but the minivna is an old antiquated thing
+
+void remote_cmd(int port)
+{ 
+   int i;
+   tinycl_do_echo = 0;
+   vna_rtr_remote_cmd_samples = 0;
+   unsigned int frequency_tuning_word, number_of_samples, frequency_tuning_step;
+   vna_rtr_remote_cmd_port = port;
+   frequency_tuning_word = get_number_serial();
+   number_of_samples = get_number_serial();
+   frequency_tuning_step = get_number_serial();
+   uint32_t start_frequency = (((uint64_t)frequency_tuning_word)*VNA_FREQUENCY_TUNING_CONVERSION_NUMERATOR)/VNA_FREQUENCY_TUNING_CONVERSION_DENOMINATOR;
+   uint32_t step_frequency = (((uint64_t)frequency_tuning_step)*VNA_FREQUENCY_TUNING_CONVERSION_NUMERATOR)/VNA_FREQUENCY_TUNING_CONVERSION_DENOMINATOR;
+   uint32_t stop_frequency = start_frequency + number_of_samples * step_frequency;
+   if ((start_frequency != vna_state.startfreq) || (stop_frequency != vna_state.endfreq) || (number_of_samples != vna_state.nfreqs))
+      vna_set_frequencies(number_of_samples, start_frequency, stop_frequency); 
+   vna_acquire_sparm(vna_rtr_remote_cmd);
+   for (i=vna_rtr_remote_cmd_samples;i<number_of_samples;i++)
+      Serial.write((const uint8 *)four_blanks,sizeof(four_blanks));
+}
+
+int remote_0_cmd(int args, tinycl_parameter* tp, void *v)
+{
+  remote_cmd(0);
+  return 0;
+}
+
+int remote_1_cmd(int args, tinycl_parameter* tp, void *v)
+{
+  remote_cmd(1);
+  return 0;
 }
 
 const tinycl_command tcmds[] =
@@ -1084,17 +1160,23 @@ const tinycl_command tcmds[] =
   { "WRITECAL", "Write Calibration State", writecal_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
   { "READCAL", "Read Calibration State", readcal_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
   { "HELP", "Display This Help", help_cmd, {TINYCL_PARM_END } },
+  { "0", "Remote Cmd", remote_0_cmd, {TINYCL_PARM_END } },
+  { "1", "Remote Cmd", remote_1_cmd, {TINYCL_PARM_END } },
 };
 
 int help_cmd(int args, tinycl_parameter *tp, void *v)
 {
   tinycl_print_commands(sizeof(tcmds) / sizeof(tinycl_command), tcmds);
+  return 1;
 }
 
 void loop(void)
 {
   if (tinycl_task(sizeof(tcmds) / sizeof(tinycl_command), tcmds, NULL))
+  {
+    tinycl_do_echo = 1;
     Serial.print("> ");
+  }
 #ifdef VNA_TOUCHSCREEN
   if (touchscreen_enabled) touchscreen_task();
 #endif

@@ -43,12 +43,6 @@ void debugmsgprintf(const char *format, ...)
   va_list ap;
 
   if (!debugmsg_state) return;
-/*  if (!debugmsg_state)
-  {
-    if (*format == '.') Serial.print(".");
-    return;
-  }
-  if (*format == '.') format++; */
 	va_start(ap, format);
 #ifdef USE_MINIPRINTF
   mini_vsnprintf(msg,sizeof(msg)-1,(const char *)format,ap);

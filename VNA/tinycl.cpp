@@ -317,6 +317,5 @@ int tinycl_task(int num_cmd, const tinycl_command *tc, void *v)
      }
      i++;
   }
-  tcmd->tc(i,tinycl_parameter_buffer,v);
-  return 1;
+  return tcmd->tc(i,tinycl_parameter_buffer,v);
 }

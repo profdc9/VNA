@@ -791,7 +791,7 @@ int touchscreen_rtr_sparm_display(int n, int total, unsigned int freq, bool ch2,
   {      
     if (taps.port == 2) s11 = s21;
     xcoor = t->w/2 + (s11.real*((float)t->h)*TOUCHSCREEN_SMITH_RADIUS);
-    ycoor1 = t->h/2 + (s11.imag*((float)t->h)*TOUCHSCREEN_SMITH_RADIUS);
+    ycoor1 = t->h/2 - (s11.imag*((float)t->h)*TOUCHSCREEN_SMITH_RADIUS);
     line1_color = (n*31)/total;
     line1_color = (line1_color << 11) | (31-line1_color);
   } else

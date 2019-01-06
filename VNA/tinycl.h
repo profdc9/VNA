@@ -66,4 +66,8 @@ void tinycl_print_commands(int num_cmd, const tinycl_command *tc);
 void tinycl_set_getchar(tinycl_getchar tg, void *tgp);
 void tinycl_set_putchar(tinycl_putchar tp, void *tpp);
 
+extern bool tinycl_do_echo;
+extern bool tinycl_do_checksum;
+
+
 #endif  /* _TINYCL_H */
