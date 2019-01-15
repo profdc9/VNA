@@ -305,6 +305,8 @@ int setup_frequency_acquire(unsigned int frequency)
     return -1;
 
   rcc_clk_enable(RCC_I2C1);
+  si5351.output_enable(SI5351_CLK0, 0);
+  si5351.output_enable(SI5351_CLK1, 0); 
   if (frequency < VNA_FREQ_3X)
   {
     si5351.set_freq(frequency * SI5351_FREQ_MULT, SI5351_CLK0);
@@ -317,6 +319,11 @@ int setup_frequency_acquire(unsigned int frequency)
     si5351.set_freq((frequency + VNA_NOMINAL_3X_IF_FREQ) * SI5351_FREQ_MULT, SI5351_CLK1);
     numphases = 12;
   }
+  si5351.pll_reset(SI5351_PLLA);
+  si5351.pll_reset(SI5351_PLLB);
+  delay(2);
+  si5351.output_enable(SI5351_CLK0, 1);
+  si5351.output_enable(SI5351_CLK1, 1); 
   rcc_clk_disable(RCC_I2C1);
   digitalWrite(ATTEN_PIN, vna_state.atten ? HIGH : LOW);
   return 0;
@@ -562,7 +569,12 @@ int vna_open_dataset_operation(vna_acquire_dataset_state *vads, void *va)
 {
   vna_calib_oneport *v1pt = (vna_calib_oneport *)va;
   v1pt[vads->n].zo = Complex((float)vads->volti, (float)vads->voltq) / Complex((float)vads->curi, (float)vads->curq);
-  DEBUGMSG("freq=%u zo=%d+i %d", vads->freq, (int)(1000.0f * v1pt[vads->n].zo.real), (int)(1000.0f * v1pt[vads->n].zo.imag));
+  if (debugmsg_state)
+  {
+    char s[80];
+    mini_snprintf(s,sizeof(s)-1,"Open freq %u zo=%06f + j%06f",vads->freq, float2int32(v1pt[vads->n].zo.real), float2int32(v1pt[vads->n].zo.imag));
+    Serial.println(s);
+  }
 }
 
 int vna_short_dataset_operation(vna_acquire_dataset_state *vads, void *va)
@@ -570,14 +582,24 @@ int vna_short_dataset_operation(vna_acquire_dataset_state *vads, void *va)
   vna_calib_oneport *v1pt = (vna_calib_oneport *)va;
   v1pt[vads->n].zs = Complex((float)vads->volti, (float)vads->voltq) / Complex((float)vads->curi, (float)vads->curq);
   vna_calib[vads->n].s2 = Complex((float)vads->cur2i,(float)vads->cur2q) / ((float) vna_state.num_averages);
-  DEBUGMSG("freq=%u zs=%d+i %d", vads->freq, (int)(1000.0f * v1pt[vads->n].zs.real), (int)(1000.0f * v1pt[vads->n].zs.imag));
+  if (debugmsg_state)
+  {
+    char s[80];
+    mini_snprintf(s,sizeof(s)-1,"Short freq %u zs=%06f + j%06f",vads->freq, float2int32(v1pt[vads->n].zs.real), float2int32(v1pt[vads->n].zs.imag));
+    Serial.println(s);
+  }
 }
 
 int vna_load_dataset_operation(vna_acquire_dataset_state *vads, void *va)
 {
   vna_calib_oneport *v1pt = (vna_calib_oneport *)va;
   v1pt[vads->n].zt = Complex((float)vads->volti, (float)vads->voltq) / Complex((float)vads->curi, (float)vads->curq);
-  DEBUGMSG("freq=%u zt=%d+i %d", vads->freq, (int)(1000.0f * v1pt[vads->n].zt.real), (int)(1000.0f * v1pt[vads->n].zt.imag));
+  if (debugmsg_state)
+  {
+    char s[80];
+    mini_snprintf(s,sizeof(s)-1,"Load freq %u zt=%06f + j%06f",vads->freq, float2int32(v1pt[vads->n].zt.real), float2int32(v1pt[vads->n].zt.imag));
+    Serial.println(s);
+  }
 }
 
 int vna_allocate_1pt_calib(void)
@@ -696,7 +718,12 @@ int vna_twocalib_dataset_operation(vna_acquire_dataset_state *vads, void *va)
   cur2pt = cur2pt - vc->s2*((float)vna_state.num_averages);
   vc->z2 = vn / cur2pt;
   vc->i2 = in / cur2pt;
-  DEBUGMSG("freq=%u z2=%d+i %d i2=%d+i %d", vads->freq, (int)(1000.0f * vc->z2.real), (int)(1000.0f * vc->z2.imag), (int)(1000.0f * vc->i2.real), (int)(1000.0f * vc->i2.imag));
+  if (debugmsg_state)
+  {
+    char s[80];
+    mini_snprintf(s,sizeof(s)-1,"Thru freq %u z2=%06f + j%06f  i2 = %06f + j%06f",vads->freq, float2int32(vc->z2.real),float2int32(vc->z2.imag),float2int32(vc->i2.real),float2int32(vc->i2.imag));
+    Serial.println(s);
+  }
 }
 
 int vna_thrucal(void)
@@ -726,57 +753,17 @@ int twocalib_cmd(int args, tinycl_parameter* tp, void *v)
   return 1;
 }
 
-void printfloat(float f)
-{
-  unsigned int i;
-  if (f < 0.0f)
-  {
-    Serial.print("-");
-    f = -f;
-  }
-  Serial.print((int)f);
-  Serial.print(".");
-  i = ((unsigned int)floorf((f - floorf(f)) * 10000.0f));
-  if (i < 10) Serial.print("000");
-  else if (i < 100) Serial.print("00");
-  else if (i < 1000) Serial.print("0");
-  Serial.print(i);
-}
-
 int vna_rtr_impedance_display(int n, int total, unsigned int freq, bool ch2, Complex imp, Complex zthru)
 {
-  if (vna_state.csv)
+  char s[80];
+  mini_snprintf(s,sizeof(s)-1,vna_state.csv ? "%u,%04f,%04f" : "Freq: %u Z (%04f,%04f)",freq,float2int32(imp.real),float2int32(imp.imag));
+  Serial.print(s);
+  if (ch2)
   {
-    Serial.print(freq);
-    Serial.print(",");
-    printfloat(imp.real);
-    Serial.print(",");
-    printfloat(imp.imag);
-    if (ch2)
-    {
-      Serial.print(",");
-      printfloat(zthru.real);
-      Serial.print(",");
-      printfloat(zthru.imag);
-    }
-    Serial.println("");
-  } else
-  {
-    Serial.print("Freq ");
-    Serial.print(freq);
-    Serial.print(": Z (");
-    printfloat(imp.real);
-    Serial.print(",");
-    printfloat(imp.imag);
-    if (ch2)
-    {
-      Serial.print(") ZT (");
-      printfloat(zthru.real);
-      Serial.print(",");
-      printfloat(zthru.imag);
-    }
-    Serial.println(")");
+    mini_snprintf(s,sizeof(s)-1,vna_state.csv ? ",%04f,%04f" : " ZT (%04f,%04f)",float2int32(zthru.real),float2int32(zthru.imag));
+    Serial.print(s);
   }
+  Serial.println("");
 }
 
 int vna_display_acq_operation(vna_acquire_dataset_state *vads, void *va)
@@ -837,43 +824,20 @@ int vna_rtr_sparm_display(int n, int total, unsigned int freq, bool ch2, Complex
   float s11db = (10.0f / logf(10.0f)) * logf(s11.absq());
   float s11deg = RAD2DEG(s11.arg());
   float s21db, s21deg;
+  char s[80];
   if (ch2)
   {
     s21db = (10.0f / logf(10.0f)) * logf(s21.absq());
     s21deg = RAD2DEG(s21.arg());    
   }
-  if (vna_state.csv)
+  mini_snprintf(s,sizeof(s)-1,vna_state.csv ? "%u,%04f,%04f" : "Freq %u: S11 (%04f,%04f)",freq,float2int32(s11db),float2int32(s11deg));
+  Serial.print(s);
+  if (ch2)
   {
-    Serial.print(freq);
-    Serial.print(",");
-    printfloat(s11db);
-    Serial.print(",");
-    printfloat(s11deg);
-    if (ch2)
-    {
-      Serial.print(",");
-      printfloat(s21db);
-      Serial.print(",");
-      printfloat(s21deg);
-    }
-    Serial.println("");
-  } else
-  {
-    Serial.print("Freq ");
-    Serial.print(freq);
-    Serial.print(": S11 (");
-    printfloat(s11db);
-    Serial.print(",");
-    printfloat(s11deg);
-    if (ch2)
-    {
-      Serial.print(") S21 (");
-      printfloat(s21db);
-      Serial.print(",");
-      printfloat(s21deg);
-    }
-    Serial.println(")");
-  }  
+    mini_snprintf(s,sizeof(s)-1," S12 (%04f,%04f)",float2int32(s21db),float2int32(s21deg));
+    Serial.print(s);
+  }
+  Serial.println("");
 }
 
 int vna_display_sparm_operation(vna_acquire_dataset_state *vads, void *va)
