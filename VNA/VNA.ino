@@ -319,8 +319,6 @@ int setup_frequency_acquire(unsigned int frequency)
     si5351.set_freq((frequency + VNA_NOMINAL_3X_IF_FREQ) * SI5351_FREQ_MULT, SI5351_CLK1);
     numphases = 12;
   }
-  si5351.pll_reset(SI5351_PLLA);
-  si5351.pll_reset(SI5351_PLLB);
   delay(2);
   si5351.output_enable(SI5351_CLK0, 1);
   si5351.output_enable(SI5351_CLK1, 1); 
@@ -374,10 +372,10 @@ void vna_initialize_si5351()
   si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_6MA);
   si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
   si5351.set_ms_source(SI5351_CLK1, SI5351_PLLB);
-  si5351.set_freq(10000000ull * SI5351_FREQ_MULT, SI5351_CLK0);
-  si5351.set_freq(10010000ull * SI5351_FREQ_MULT, SI5351_CLK1);
-  si5351.output_enable(SI5351_CLK0, 1);
-  si5351.output_enable(SI5351_CLK1, 1); 
+  //si5351.set_freq(10000000ull * SI5351_FREQ_MULT, SI5351_CLK0);
+  //si5351.set_freq(10010000ull * SI5351_FREQ_MULT, SI5351_CLK1);
+  //si5351.output_enable(SI5351_CLK0, 1);
+  //si5351.output_enable(SI5351_CLK1, 1); 
   rcc_clk_disable(RCC_I2C1);
 }
 
@@ -385,7 +383,7 @@ bool vna_acquire_dataset(vna_acquisition_state *vs, vna_acquire_dataset_operatio
 {
   int n;
   vna_acquire_dataset_state vads;
-   
+
   vna_initialize_si5351();
   unsigned int freqstep = (vs->endfreq - vs->startfreq) / vs->nfreqs;
   for (n = 0; n < vs->nfreqs; n++)
@@ -834,7 +832,7 @@ int vna_rtr_sparm_display(int n, int total, unsigned int freq, bool ch2, Complex
   Serial.print(s);
   if (ch2)
   {
-    mini_snprintf(s,sizeof(s)-1," S12 (%04f,%04f)",float2int32(s21db),float2int32(s21deg));
+    mini_snprintf(s,sizeof(s)-1," S21 (%04f,%04f)",float2int32(s21db),float2int32(s21deg));
     Serial.print(s);
   }
   Serial.println("");
