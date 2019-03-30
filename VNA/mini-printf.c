@@ -44,6 +44,10 @@
 #include "mini-printf.h"
 
 #ifdef MINI_PRINTF_FTOA
+#include <math.h>
+#endif
+
+#ifdef MINI_PRINTF_FTOA
 float ipow10f(int p)
 {
   float f = 1.0f;
@@ -114,7 +118,7 @@ mini_strlen(const char *s)
 	return len;
 }
 
-static unsigned int
+unsigned int
 mini_itoa(int value, unsigned int radix, unsigned int uppercase, unsigned int unsig,
 	 char *buffer, unsigned int zero_pad)
 {

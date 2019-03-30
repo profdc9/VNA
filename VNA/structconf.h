@@ -1,3 +1,6 @@
+#ifndef _STRUCTCONF_H
+#define _STRUCTCONF_H
+
 /*
  * Copyright (c) 2018 Daniel Marks
 
@@ -18,40 +21,24 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
  */
 
-#include "Arduino.h"
-#include <stdarg.h>
-#include "debugmsg.h"
-#include "consoleio.h"
+typedef enum { STRUCTCONF_INT32=0, STRUCTCONF_INT16, STRUCTCONF_INT8, STRUCTCONF_INT32_HEX, STRUCTCONF_INT16_HEX, STRUCTCONF_INT8_HEX,
+    STRUCTCONF_FLOAT, STRUCTCONF_STRING } structconf_datatype;
 
-#define USE_MINIPRINTF
+#define STRUCTCONF_INTMIN -2147483648
+#define STRUCTCONF_INTMAX 2147483647
 
-#ifdef USE_MINIPRINTF
-#include "mini-printf.h"
-#endif
+typedef struct _structure_entry
+{ 
+   const char          *parmname;
+   structconf_datatype  dtype;
+   uint16_t             offset;
+   uint16_t             nentries;
+   int                  minval;
+   int                  maxval;
+   const char          *description;
+} structure_entry;
 
-#ifdef DEBUGM
+void se_print_structure(int nentries, const structure_entry se[], void *str);
+void se_set_structure_field(int nentries, const structure_entry se[], void *str, const char *c);
 
-unsigned char debugmsg_state = 0;
-
-void setDebugMsgMode(unsigned char state)
-{
-  debugmsg_state = state;
-}
-
-void debugmsgprintf(const char *format, ...)
-{
-  char msg[MAXMSG];
-  va_list ap;
-
-  if (!debugmsg_state) return;
-	va_start(ap, format);
-#ifdef USE_MINIPRINTF
-  mini_vsnprintf(msg,sizeof(msg)-1,(const char *)format,ap);
-#else
-  vsnprintf(msg,sizeof(msg)-1,(const char *)format,ap);
-#endif
-	msg[MAXMSG-1] = '\000';
-	console_println(msg);
-}
-
-#endif
+#endif  /* _STRUCTCONF_H */

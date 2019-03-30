@@ -67,7 +67,7 @@ typedef struct _vna_acquisition_state
   unsigned char csv;
   unsigned char atten;
   unsigned char series_shunt_two;
-  unsigned char temp;
+  unsigned char remote;
   unsigned short calib_state;
 } vna_acquisition_state;
 
@@ -125,5 +125,6 @@ int vna_acquire_impedance(vna_report_trans_reflected vrtr);
 int vna_set_averages(unsigned short averages, unsigned short timeout);
 int vna_set_characteristic_impedance(unsigned int char_impedance);
 void  vna_initialize_si5351(void);
+void vna_setup_remote_serial(void);
 
 #endif  /* _VNA_H */

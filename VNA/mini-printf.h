@@ -45,6 +45,8 @@ int mini_snprintf(char* buffer, unsigned int buffer_len, const char *fmt, ...);
 typedef unsigned int float32int;
 
 unsigned int mini_ftoa(float f, int dec, char *s, int len);
+unsigned int mini_itoa(int value, unsigned int radix, unsigned int uppercase, unsigned int unsig,
+   char *buffer, unsigned int zero_pad);
 float ipow10f(int p);
 inline float32int float2int32(float f) 
 {

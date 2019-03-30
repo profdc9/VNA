@@ -457,7 +457,7 @@ typedef struct _touchscreen_axes_parameters
   float minx, maxx, minrndx, maxrndx, stepspacex, slopex;
   float miny1, maxy1, minrndy1, maxrndy1, stepspacey1, slopey1;
   float miny2, maxy2, minrndy2, maxrndy2, stepspacey2, slopey2;
-  char *axislabel1, *axislabel2;
+  const char *axislabel1, *axislabel2;
   int16_t dec, dec1, dec2;
   int16_t w, h;
   int16_t lastx, lasty1, lasty2;
@@ -953,6 +953,15 @@ int touchscreen_atten(int code, void *v)
   touchscreen_wait();   
 }
 
+int touchscreen_remote(int code, void *v)
+{
+  bool remotechoice;
+  if (!touchscreen_enter_yesno("Serial Remote?",NULL,remotechoice)) return 0;
+  vna_state.remote = remotechoice ? 1 : 0;
+  vna_setup_remote_serial();
+  touchscreen_display_message(vna_state.remote == 1 ? "Serial On" : "Serial Off");
+  touchscreen_wait();   
+}
 
 int touchscreen_series(int code, void *v)
 {
@@ -972,7 +981,8 @@ const touchscreen_button_panel_entry settingspanel[] =
   { 500, 150, 80, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "dB Scale", 2, touchscreen_db_scale },
   { 600, 0, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Smith", 2, touchscreen_smith },
   { 700, 80, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Atten", 2, touchscreen_atten },
-  { 800, 160, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Series/Shunt", 2, touchscreen_series }
+  { 800, 160, 120,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Series/Shunt", 2, touchscreen_series },
+  { 900, 0, 160,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, "Serial Rem", 2, touchscreen_remote }
 };
 
 int touchscreen_settings(int code, void *v)

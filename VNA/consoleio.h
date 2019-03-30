@@ -1,3 +1,6 @@
+#ifndef _CONSOLEIO_H
+#define _CONSOLEIO_H
+
 /*
  * Copyright (c) 2018 Daniel Marks
 
@@ -18,40 +21,16 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
  */
 
-#include "Arduino.h"
-#include <stdarg.h>
-#include "debugmsg.h"
-#include "consoleio.h"
+void console_printchar(const char c);
+void console_print(const char *c);
+void console_println(const char *c);
+void console_print(int n);
+void console_print(unsigned int n);
+void console_println(int n);
+void console_println(unsigned int n);
+int console_inchar(void);
 
-#define USE_MINIPRINTF
+void console_setMainSerial(Stream *serialDevice);
+void console_setExternalSerial(Stream *serialDevice);
 
-#ifdef USE_MINIPRINTF
-#include "mini-printf.h"
-#endif
-
-#ifdef DEBUGM
-
-unsigned char debugmsg_state = 0;
-
-void setDebugMsgMode(unsigned char state)
-{
-  debugmsg_state = state;
-}
-
-void debugmsgprintf(const char *format, ...)
-{
-  char msg[MAXMSG];
-  va_list ap;
-
-  if (!debugmsg_state) return;
-	va_start(ap, format);
-#ifdef USE_MINIPRINTF
-  mini_vsnprintf(msg,sizeof(msg)-1,(const char *)format,ap);
-#else
-  vsnprintf(msg,sizeof(msg)-1,(const char *)format,ap);
-#endif
-	msg[MAXMSG-1] = '\000';
-	console_println(msg);
-}
-
-#endif
+#endif  /* _CONSOLEIO_H */

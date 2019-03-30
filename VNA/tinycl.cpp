@@ -21,6 +21,7 @@ freely, subject to the following restrictions:
 #include "Arduino.h"
 #include <stdarg.h>
 #include "tinycl.h"
+#include "consoleio.h"
 
 char               tinycl_command_buffer[TINYCL_COMMAND_BUFFER+1];
 int                tinycl_cur_char = 0;
@@ -30,14 +31,12 @@ bool               tinycl_do_checksum = 0;
 #ifdef TINYCL_ARDUINO_DEFAULT
 int tinycl_arduino_getchar(void *v)
 {
-  if (!Serial.available())
-      return -1;
-  return Serial.read();
+  return console_inchar();
 }
 
 void tinycl_arduino_putchar(char c,void *v)
 {
-  Serial.print(c);
+  console_printchar(c);
 }
 tinycl_getchar tinycl_tg     = tinycl_arduino_getchar;
 void           *tinycl_tg_ptr = NULL;
