@@ -25,7 +25,7 @@ LOAD 50                           Do a 50 ohm load calibration on port 1.  Conne
                                   50 ohm resistor for port 1.
 								  After this step, 1 port calibration is complete.
 								  
-TWOCAL                            Do a two-port calibration.  Connect port 1 to port 2
+THRU                              Do a two-port calibration.  Connect port 1 to port 2
                                   and execute the command.
                                   After this step, 2 port calibration is complete.
 								  
@@ -126,7 +126,7 @@ Only after SHORT port calibration, apply a load of impedance <impedance> (usuall
 to the port.  After this step, 1 port calibration is complete.
 
 
-TWOCAL 
+THRU
 
 Connect port 1 to port 2 and acquire thru part of calibration.  After this step, 2 port
 calibration is complete.
