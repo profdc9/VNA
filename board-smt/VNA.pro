@@ -1,4 +1,4 @@
-update=12/25/2018 2:22:19 AM
+update=7/1/2019 9:58:22 PM
 version=1
 last_client=kicad
 [pcbnew]
@@ -64,6 +64,7 @@ LibName32=valves
 LibName33=bluepill
 LibName34=sa612
 LibName35=si5351a
+LibName36=AMS1117-3V3
 [schematic_editor]
 version=1
 PageLayoutDescrFile=
