@@ -148,7 +148,7 @@ F 3 "" H 2050 2550 50  0001 C CNN
 	1    2050 2550
 	1    0    0    -1  
 $EndComp
-Text GLabel 3650 4150 2    60   Input ~ 0
+Text GLabel 4500 4150 2    60   Input ~ 0
 CS5
 $Comp
 L GND #PWR10
@@ -385,7 +385,7 @@ Wire Wire Line
 Wire Wire Line
 	5300 3900 5450 3900
 Wire Wire Line
-	3250 4150 3650 4150
+	3250 4150 4500 4150
 Wire Wire Line
 	3550 4400 3550 4350
 Wire Wire Line
@@ -428,7 +428,7 @@ Wire Wire Line
 Wire Wire Line
 	2400 4050 2600 4050
 Wire Wire Line
-	1800 4150 2650 4150
+	1150 4150 2650 4150
 Wire Wire Line
 	2500 4150 2500 4050
 Connection ~ 2500 4050
@@ -440,11 +440,11 @@ Wire Wire Line
 Wire Wire Line
 	1900 4050 2100 4050
 Wire Wire Line
-	2000 4050 2000 4350
+	2000 4350 2000 4050
 Wire Wire Line
-	1800 4350 2650 4350
+	1150 4350 2650 4350
 Connection ~ 2000 4050
-Text GLabel 1800 4150 0    60   Input ~ 0
+Text GLabel 1150 4150 0    60   Input ~ 0
 INTF1
 Connection ~ 2500 4150
 Text GLabel 3300 5000 1    60   Input ~ 0
@@ -506,7 +506,7 @@ Wire Wire Line
 	3900 4950 3900 5150
 Wire Wire Line
 	3900 5150 3800 5150
-Text GLabel 1800 4350 0    60   Input ~ 0
+Text GLabel 1150 4350 0    60   Input ~ 0
 INTF2
 Text GLabel 2650 5000 1    60   Input ~ 0
 INTF1
@@ -592,4 +592,140 @@ F 3 "" H 4800 5150 50  0001 C CNN
 	1    4800 5150
 	1    0    0    -1  
 $EndComp
+$Comp
+L C_Small C?
+U 1 1 5DB04AB0
+P 1300 4600
+F 0 "C?" H 1310 4670 50  0000 L CNN
+F 1 "C_Small" H 1310 4520 50  0000 L CNN
+F 2 "Capacitors_SMD:C_0805_HandSoldering" H 1300 4600 50  0001 C CNN
+F 3 "" H 1300 4600 50  0001 C CNN
+	1    1300 4600
+	1    0    0    -1  
+$EndComp
+$Comp
+L C_Small C?
+U 1 1 5DB04B22
+P 1500 4600
+F 0 "C?" H 1510 4670 50  0000 L CNN
+F 1 "C_Small" H 1510 4520 50  0000 L CNN
+F 2 "Capacitors_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm" H 1500 4600 50  0001 C CNN
+F 3 "" H 1500 4600 50  0001 C CNN
+	1    1500 4600
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1500 4500 1500 4150
+Connection ~ 1500 4150
+Wire Wire Line
+	1300 4500 1300 4150
+Connection ~ 1300 4150
+Wire Wire Line
+	1300 4700 1500 4700
+$Comp
+L GND #PWR?
+U 1 1 5DB04E59
+P 1400 4800
+F 0 "#PWR?" H 1400 4550 50  0001 C CNN
+F 1 "GND" H 1400 4650 50  0000 C CNN
+F 2 "" H 1400 4800 50  0001 C CNN
+F 3 "" H 1400 4800 50  0001 C CNN
+	1    1400 4800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1400 4800 1400 4700
+Connection ~ 1400 4700
+$Comp
+L C_Small C?
+U 1 1 5DB04F23
+P 1750 4600
+F 0 "C?" H 1760 4670 50  0000 L CNN
+F 1 "C_Small" H 1760 4520 50  0000 L CNN
+F 2 "Capacitors_SMD:C_0805_HandSoldering" H 1750 4600 50  0001 C CNN
+F 3 "" H 1750 4600 50  0001 C CNN
+	1    1750 4600
+	1    0    0    -1  
+$EndComp
+$Comp
+L C_Small C?
+U 1 1 5DB04F79
+P 1950 4600
+F 0 "C?" H 1960 4670 50  0000 L CNN
+F 1 "C_Small" H 1960 4520 50  0000 L CNN
+F 2 "Capacitors_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm" H 1950 4600 50  0001 C CNN
+F 3 "" H 1950 4600 50  0001 C CNN
+	1    1950 4600
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1750 4700 1950 4700
+$Comp
+L GND #PWR?
+U 1 1 5DB05040
+P 1850 4800
+F 0 "#PWR?" H 1850 4550 50  0001 C CNN
+F 1 "GND" H 1850 4650 50  0000 C CNN
+F 2 "" H 1850 4800 50  0001 C CNN
+F 3 "" H 1850 4800 50  0001 C CNN
+	1    1850 4800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1850 4800 1850 4700
+Connection ~ 1850 4700
+Wire Wire Line
+	1950 4500 1950 4350
+Connection ~ 1950 4350
+Wire Wire Line
+	1750 4500 1750 4350
+Connection ~ 1750 4350
+$Comp
+L C_Small C?
+U 1 1 5DB0532D
+P 4100 4400
+F 0 "C?" H 4110 4470 50  0000 L CNN
+F 1 "C_Small" H 4110 4320 50  0000 L CNN
+F 2 "Capacitors_SMD:C_0805_HandSoldering" H 4100 4400 50  0001 C CNN
+F 3 "" H 4100 4400 50  0001 C CNN
+	1    4100 4400
+	1    0    0    -1  
+$EndComp
+$Comp
+L C_Small C?
+U 1 1 5DB0539D
+P 4350 4400
+F 0 "C?" H 4360 4470 50  0000 L CNN
+F 1 "C_Small" H 4360 4320 50  0000 L CNN
+F 2 "Capacitors_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm" H 4350 4400 50  0001 C CNN
+F 3 "" H 4350 4400 50  0001 C CNN
+	1    4350 4400
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4100 4300 4100 4150
+Connection ~ 4100 4150
+Wire Wire Line
+	4350 4300 4350 4150
+Connection ~ 4350 4150
+Wire Wire Line
+	4100 4500 4100 4550
+Wire Wire Line
+	4100 4550 4350 4550
+Wire Wire Line
+	4350 4550 4350 4500
+$Comp
+L GND #PWR?
+U 1 1 5DB055E7
+P 4200 4700
+F 0 "#PWR?" H 4200 4450 50  0001 C CNN
+F 1 "GND" H 4200 4550 50  0000 C CNN
+F 2 "" H 4200 4700 50  0001 C CNN
+F 3 "" H 4200 4700 50  0001 C CNN
+	1    4200 4700
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4200 4700 4200 4550
+Connection ~ 4200 4550
 $EndSCHEMATC
