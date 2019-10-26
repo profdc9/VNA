@@ -77,12 +77,12 @@ $EndComp
 $Comp
 L +5V #PWR14
 U 1 1 5DAF73DB
-P 4250 3050
-F 0 "#PWR14" H 4250 2900 50  0001 C CNN
-F 1 "+5V" H 4250 3190 50  0000 C CNN
-F 2 "" H 4250 3050 50  0001 C CNN
-F 3 "" H 4250 3050 50  0001 C CNN
-	1    4250 3050
+P 5000 4000
+F 0 "#PWR14" H 5000 3850 50  0001 C CNN
+F 1 "+5V" H 5000 4140 50  0000 C CNN
+F 2 "" H 5000 4000 50  0001 C CNN
+F 3 "" H 5000 4000 50  0001 C CNN
+	1    5000 4000
 	1    0    0    -1  
 $EndComp
 Text GLabel 2800 2950 2    60   Input ~ 0
@@ -374,12 +374,9 @@ Wire Wire Line
 Wire Wire Line
 	4650 3600 5450 3600
 Wire Wire Line
-	4250 3050 4250 4000
+	4250 3050 4250 3300
 Wire Wire Line
 	4250 3300 5450 3300
-Wire Wire Line
-	4250 4000 5450 4000
-Connection ~ 4250 3300
 Wire Wire Line
 	5300 4100 5300 3900
 Wire Wire Line
@@ -544,7 +541,6 @@ LCD adapter daughterboard for ILI9341/ILI9488 displays
 Text Notes 7350 6900 0    60   ~ 0
 by Daniel Marks KW4TI
 NoConn ~ 2100 3250
-NoConn ~ 2600 3250
 Wire Wire Line
 	3900 3900 3900 3850
 $Comp
@@ -822,4 +818,12 @@ Wire Wire Line
 	1850 4350 1850 4400
 Connection ~ 1850 4400
 Connection ~ 1850 4350
+Text GLabel 2800 3250 2    60   Input ~ 0
+LEDPWR
+Wire Wire Line
+	2600 3250 2800 3250
+Text GLabel 4250 3050 1    60   Input ~ 0
+LEDPWR
+Wire Wire Line
+	5000 4000 5450 4000
 $EndSCHEMATC

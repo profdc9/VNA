@@ -1,12 +1,12 @@
 (kicad_pcb (version 4) (host pcbnew 4.0.7)
 
   (general
-    (links 276)
+    (links 277)
     (no_connects 0)
     (area 49.924999 49.924999 150.075001 150.075001)
     (thickness 1.6)
     (drawings 43)
-    (tracks 2373)
+    (tracks 2376)
     (zones 0)
     (modules 141)
     (nets 86)
@@ -37,7 +37,7 @@
   )
 
   (setup
-    (last_trace_width 0.35)
+    (last_trace_width 0.5)
     (user_trace_width 0.35)
     (user_trace_width 0.5)
     (user_trace_width 1)
@@ -5523,7 +5523,8 @@
     (pad 12 thru_hole oval (at 2.54 12.7 180) (size 1.7 1.7) (drill 1) (layers *.Cu *.Mask)
       (net 85 "Net-(J1-Pad12)"))
     (pad 13 thru_hole oval (at 0 15.24 180) (size 1.7 1.7) (drill 1) (layers *.Cu *.Mask))
-    (pad 14 thru_hole oval (at 2.54 15.24 180) (size 1.7 1.7) (drill 1) (layers *.Cu *.Mask))
+    (pad 14 thru_hole oval (at 2.54 15.24 180) (size 1.7 1.7) (drill 1) (layers *.Cu *.Mask)
+      (net 44 +5V))
     (model ${KISYS3DMOD}/Pin_Headers.3dshapes/Pin_Header_Straight_2x07_Pitch2.54mm.wrl
       (at (xyz 0 0 0))
       (scale (xyz 1 1 1))
@@ -7505,8 +7506,11 @@
   (segment (start 77.962 101.076) (end 83.312 106.426) (width 0.25) (layer F.Cu) (net 43) (tstamp 5D94F0CA))
   (segment (start 84.756 106.426) (end 84.836 106.506) (width 0.25) (layer F.Cu) (net 43) (tstamp 5D94F0CC))
   (segment (start 143.256 103.7844) (end 143.4211 103.7844) (width 0.35) (layer B.Cu) (net 43) (tstamp 5BE376FB) (status 30))
+  (segment (start 56.02224 119.6848) (end 56.02224 119.22224) (width 0.5) (layer F.Cu) (net 44))
+  (segment (start 56.02224 119.22224) (end 53.9218 117.1218) (width 0.5) (layer F.Cu) (net 44) (tstamp 5DB1B1E3))
   (segment (start 52.99964 122.5804) (end 52.99964 118.04396) (width 0.5) (layer F.Cu) (net 44))
-  (segment (start 52.99964 118.04396) (end 54.6354 116.4082) (width 0.5) (layer F.Cu) (net 44) (tstamp 5D9FAEAD))
+  (segment (start 52.99964 118.04396) (end 53.9218 117.1218) (width 0.5) (layer F.Cu) (net 44) (tstamp 5D9FAEAD))
+  (segment (start 53.9218 117.1218) (end 54.6354 116.4082) (width 0.5) (layer F.Cu) (net 44) (tstamp 5DB1B1E6))
   (segment (start 54.6354 116.4082) (end 71.7296 116.4082) (width 0.5) (layer F.Cu) (net 44) (tstamp 5D9FAEAE))
   (segment (start 71.7296 116.4082) (end 74.422 119.1006) (width 0.5) (layer F.Cu) (net 44) (tstamp 5D9FAEAF))
   (segment (start 74.422 119.1006) (end 74.422 123.19) (width 0.5) (layer F.Cu) (net 44) (tstamp 5D9FAEB1))
@@ -8419,9 +8423,7 @@
         (xy 61.831558 120.120518) (xy 61.4455 120.280034) (xy 61.149872 120.575146) (xy 61.016321 120.896773) (xy 60.394874 120.275326)
         (xy 60.113518 120.087329) (xy 60.193586 119.6848) (xy 60.071793 119.072507) (xy 59.724957 118.553429) (xy 59.205879 118.206593)
         (xy 58.593586 118.0848) (xy 58.530894 118.0848) (xy 57.918601 118.206593) (xy 57.399523 118.553429) (xy 57.29224 118.71399)
-        (xy 57.184957 118.553429) (xy 56.665879 118.206593) (xy 56.053586 118.0848) (xy 55.990894 118.0848) (xy 55.378601 118.206593)
-        (xy 54.859523 118.553429) (xy 54.512687 119.072507) (xy 54.390894 119.6848) (xy 54.512687 120.297093) (xy 54.54548 120.346172)
-        (xy 53.99964 120.892012) (xy 53.99964 118.458174) (xy 55.049614 117.4082) (xy 71.315386 117.4082)
+        (xy 57.184957 118.553429) (xy 56.665879 118.206593) (xy 56.359955 118.145741) (xy 55.622414 117.4082) (xy 71.315386 117.4082)
       )
     )
     (filled_polygon

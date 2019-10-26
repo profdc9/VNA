@@ -1478,6 +1478,28 @@ F 3 "" H 4500 6400 50  0001 C CNN
 $EndComp
 Text GLabel 4650 5900 2    60   Input ~ 0
 CLK1C
+$Comp
+L Conn_02x07_Odd_Even J1
+U 1 1 5DA03655
+P 10550 4050
+F 0 "J1" H 10600 4450 50  0000 C CNN
+F 1 "Conn_02x07_Odd_Even" H 10600 3650 50  0000 C CNN
+F 2 "Pin_Headers:Pin_Header_Straight_2x07_Pitch2.54mm" H 10550 4050 50  0001 C CNN
+F 3 "" H 10550 4050 50  0001 C CNN
+	1    10550 4050
+	1    0    0    -1  
+$EndComp
+$Comp
+L +5V #PWR?
+U 1 1 5DB1B8AD
+P 10150 4550
+F 0 "#PWR?" H 10150 4400 50  0001 C CNN
+F 1 "+5V" H 10150 4690 50  0000 C CNN
+F 2 "" H 10150 4550 50  0001 C CNN
+F 3 "" H 10150 4550 50  0001 C CNN
+	1    10150 4550
+	1    0    0    -1  
+$EndComp
 Wire Wire Line
 	9250 1500 10350 1500
 Wire Wire Line
@@ -1952,17 +1974,6 @@ Wire Wire Line
 	10850 4150 11000 4150
 Wire Wire Line
 	11000 4150 11000 4800
-$Comp
-L Conn_02x07_Odd_Even J1
-U 1 1 5DA03655
-P 10550 4050
-F 0 "J1" H 10600 4450 50  0000 C CNN
-F 1 "Conn_02x07_Odd_Even" H 10600 3650 50  0000 C CNN
-F 2 "Pin_Headers:Pin_Header_Straight_2x07_Pitch2.54mm" H 10550 4050 50  0001 C CNN
-F 3 "" H 10550 4050 50  0001 C CNN
-	1    10550 4050
-	1    0    0    -1  
-$EndComp
 Wire Wire Line
 	9200 5000 10000 5000
 Wire Wire Line
@@ -1979,4 +1990,8 @@ Wire Wire Line
 	10900 4700 10900 4250
 Wire Wire Line
 	10900 4250 10850 4250
+Wire Wire Line
+	10850 4350 10850 4550
+Wire Wire Line
+	10850 4550 10150 4550
 $EndSCHEMATC
