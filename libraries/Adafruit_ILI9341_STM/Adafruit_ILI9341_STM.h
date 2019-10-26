@@ -129,7 +129,7 @@ class Adafruit_ILI9341_STM : public Adafruit_GFX_AS {
   */
 
 #define DMA_ON_LIMIT 250 // do DMA only for more data than this
-#define SAFE_FREQ  24000000ul // 24MHz for reading
+#define SAFE_FREQ  2250000ul // 2MHz for reading
 
 #define writePixel drawPixel
 

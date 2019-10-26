@@ -1025,7 +1025,7 @@ void Adafruit_GFX::drawRGBBitmap(int16_t x, int16_t y,
 */
 /**************************************************************************/
 void Adafruit_GFX::drawChar(int16_t x, int16_t y, unsigned char c,
-  uint16_t color, uint16_t bg, uint8_t size) {
+  uint16_t color, uint16_t bg, uint8_t size, bool rotate) {
 
     if(!gfxFont) { // 'Classic' built-in font
 
@@ -1043,14 +1043,26 @@ void Adafruit_GFX::drawChar(int16_t x, int16_t y, unsigned char c,
             for(int8_t j=0; j<8; j++, line >>= 1) {
                 if(line & 1) {
                     if(size == 1)
-                        writePixel(x+i, y+j, color);
+					{
+						if (rotate) writePixel(x+j, y-i, color);
+							else writePixel(x+i, y+j, color);
+					}
                     else
-                        writeFillRect(x+i*size, y+j*size, size, size, color);
+					{
+						if (rotate) writeFillRect(x+j*size, y-i*size, size, size, color);
+							else writeFillRect(x+i*size, y+j*size, size, size, color);
+					}
                 } else if(bg != color) {
                     if(size == 1)
-                        writePixel(x+i, y+j, bg);
+					{
+						if (rotate) writePixel(x+j, y-i, bg);
+							else writePixel(x+i, y+j, bg);
+					}
                     else
-                        writeFillRect(x+i*size, y+j*size, size, size, bg);
+					{
+						if (rotate) writeFillRect(x+j*size, y-i*size, size, size, bg);
+							else writeFillRect(x+i*size, y+j*size, size, size, bg);
+					}
                 }
             }
         }
@@ -1109,10 +1121,11 @@ void Adafruit_GFX::drawChar(int16_t x, int16_t y, unsigned char c,
                 }
                 if(bits & 0x80) {
                     if(size == 1) {
-                        writePixel(x+xo+xx, y+yo+yy, color);
+						if (rotate) writePixel(x+xo+yy, y+yo-xx, color);
+							else writePixel(x+xo+xx, y+yo+yy, color);
                     } else {
-                        writeFillRect(x+(xo16+xx)*size, y+(yo16+yy)*size,
-                          size, size, color);
+						if (rotate) writeFillRect(x+(xo16+yy)*size, y+(yo16-xx)*size, size, size, color);
+							else writeFillRect(x+(xo16+yy)*size, y+(yo16-xx)*size, size, size, color);
                     }
                 }
                 bits <<= 1;

@@ -23,7 +23,8 @@ freely, subject to the following restrictions:
 
 #include "complex.h"
 
-#define VNA_MAX_FREQS 80
+#define VNA_MAX_CAL_FREQS 80
+#define VNA_MAX_ACQ_FREQS 100
 #define VNA_MIN_FREQ 30000u
 #define VNA_MAX_FREQ 450000000u
 #define VNA_FREQ_3X 150000000u
@@ -58,11 +59,14 @@ extern const vna_flash_header flash_header;
 
 typedef struct _vna_acquisition_state
 {
+  unsigned int cal_startfreq;
+  unsigned int cal_endfreq;
   unsigned int startfreq;
   unsigned int endfreq;
   unsigned short char_impedance;
   unsigned short num_averages;
   unsigned short timeout;
+  unsigned short cal_nfreqs;
   unsigned short nfreqs;
   unsigned char csv;
   unsigned char atten;
@@ -105,6 +109,9 @@ typedef struct _vna_acquire_dataset_state
   int cur2q;  
 } vna_acquire_dataset_state;
 
+typedef int (*vna_idle_function)(void *v);
+void vna_set_idle_function(vna_idle_function f, void *v = NULL);
+
 typedef int (*vna_acquire_dataset_operation)(vna_acquire_dataset_state *vads, void *v);
 typedef int (*vna_report_trans_reflected)(int n, int total, unsigned int, bool ch2, Complex trans, Complex ref);
 
@@ -126,5 +133,6 @@ int vna_set_averages(unsigned short averages, unsigned short timeout);
 int vna_set_characteristic_impedance(unsigned int char_impedance);
 void  vna_initialize_si5351(void);
 void vna_setup_remote_serial(void);
+int vna_calset_frequencies(unsigned int nfreqs, unsigned int startfreq, unsigned int endfreq);
 
 #endif  /* _VNA_H */
