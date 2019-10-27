@@ -433,7 +433,7 @@ bool vna_acquire_dataset(vna_acquisition_state *vs, vna_acquire_dataset_operatio
        return false;
 #endif
   }
-  return 1;
+  return true;
 }
 
 int vna_set_averages(unsigned short averages, unsigned short timeout)

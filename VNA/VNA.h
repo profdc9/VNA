@@ -26,8 +26,8 @@ freely, subject to the following restrictions:
 #define VNA_MAX_CAL_FREQS 80
 #define VNA_MAX_ACQ_FREQS 100
 #define VNA_MIN_FREQ 30000u
-#define VNA_MAX_FREQ 450000000u
-#define VNA_FREQ_3X 150000000u
+#define VNA_MAX_FREQ 600000000u
+#define VNA_FREQ_3X 200000000u
 #define VNA_NOMINAL_1X_IF_FREQ 10024u
 #define VNA_NOMINAL_3X_IF_FREQ (VNA_NOMINAL_1X_IF_FREQ/2)
 
@@ -134,5 +134,7 @@ int vna_set_characteristic_impedance(unsigned int char_impedance);
 void  vna_initialize_si5351(void);
 void vna_setup_remote_serial(void);
 int vna_calset_frequencies(unsigned int nfreqs, unsigned int startfreq, unsigned int endfreq);
+int vna_display_sparm_operation(vna_acquire_dataset_state *vads, void *va);
+int vna_display_acq_operation(vna_acquire_dataset_state *vads, void *va);
 
 #endif  /* _VNA_H */

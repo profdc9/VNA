@@ -94,7 +94,6 @@ bool touchscreen_solid_release(int16_t ms)
 bool touchscreen_solid_press(int16_t &x, int16_t &y, int16_t &z, bool applycal, int16_t ms )
 {
   int px = 0, py = 0, pz = 0;
-  ms = ms / 25;
   ms = (ms < 1) ? 1 : ms;
   for (int n = 0; n < ms; n++)
   {
@@ -104,12 +103,16 @@ bool touchscreen_solid_press(int16_t &x, int16_t &y, int16_t &z, bool applycal, 
       return false;
     }
     TS_Point p = ts.getPoint();
-    px += p.x;
-    py += p.y;
-    pz += p.z;
-    delay(25);
+    if (ms > 50)
+    {
+      px += p.x;
+      py += p.y;
+      pz += p.z;
+    }
+    delay(1);
   }
   touchscreen_spi_reset();
+  ms -= 50;
   x = px / ms;
   y = py / ms;
   z = pz / ms;
@@ -387,7 +390,7 @@ const touchscreen_button_panel_entry yesnopanel[] =
 {
   { 0, 60, 150, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " NO ", 2, NULL },
   { 1, 160, 150, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " YES ", 2, NULL },
-  { 2, 240, 210, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " Esc ", 2, NULL }
+  { 2, 240, 190, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " Esc ", 2, NULL }
 };
 
 bool touchscreen_enter_yesno(const char *c1, const char *c2, bool &yesno)
@@ -507,8 +510,8 @@ typedef struct _touchscreen_axes_parameters
   Complex *axis_data;
   int16_t num_axis_data;
   const char *format_string;
+  Complex *sparms;
 } touchscreen_axes_parameters;
-
 
 bool touchscreen_smith_chart = false;
 float touchscreen_axes_impedance_scale = 500.0f;
@@ -932,6 +935,145 @@ int touchscreen_sparm(int code, void *v)
   return 0;
 }
 
+const touchscreen_button_panel_entry spotpanel[] =
+{
+  { 0, 0, 154, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, "-10M", 1, NULL },
+  { 1, 40, 154, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, "-1M", 1, NULL },
+  { 2, 80, 154, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, "-100k ", 1, NULL },
+  { 3, 120, 154, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, " -10k", 1, NULL },
+  { 4, 160, 154, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, "-1k", 1, NULL },
+  { 5, 200, 154, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, "-100 ", 1, NULL },
+  { 6, 240, 154, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, " -10 ", 1, NULL },
+  { 7, 280, 154, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, " -1 ", 1, NULL },
+  { 8, 0, 180, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, "+10M", 1, NULL },
+  { 9, 40, 180, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, "+1M", 1, NULL },
+  { 10, 80, 180, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, "+100k ", 1, NULL },
+  { 11, 120, 180, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, " +10k", 1, NULL },
+  { 12, 160, 180, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, "+1k", 1, NULL },
+  { 13, 200, 180, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, "+100 ", 1, NULL },
+  { 14, 240, 180, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, "+10 ", 1, NULL },
+  { 15, 280, 180, 2, 36, 25, 0xFFFF, 0x0000, 0xFFFF, "+1 ", 1, NULL },
+  { 16, 240, 210, 2, 0, 20, 0xFFFF, 0x0000, 0xFFFF, "Esc", 2, NULL },
+};
+
+int touchscreen_rtr_spot_display(int n, int total, unsigned int freq, bool ch2, Complex s11, Complex s21)
+{
+  taps.sparms[0] = s11;
+  taps.sparms[1] = s21;
+}
+
+int touchscreen_spot(int code, void *v)
+{
+  Complex sparms[2];
+  vna_acquisition_state vs;
+  uint32_t curfreq;
+  int16_t h = tft.height() - TOUCHSCREEN_BOTTOM_LINES;
+  int16_t w = tft.width(), xp, yp, zp;
+  bool endspot = false;
+  char s[80];
+
+  if (!(vna_state.calib_state & VNA_VALID_CALIB_1PT)) 
+  {
+    touchscreen_display_message("Can only be\nperformed after 1\nor 2 port calibration");
+    touchscreen_wait();
+    return 0;
+  }
+  taps.sparms = sparms;
+  curfreq = (vna_state.cal_startfreq + vna_state.cal_endfreq) / 2;
+
+  tft.fillScreen(ILI9341_BLACK);
+  touchscreen_draw_button_panel(&tft, sizeof(spotpanel) / sizeof(touchscreen_button_panel_entry), spotpanel);
+  while (!endspot)
+  {
+    if ((curfreq < vna_state.cal_startfreq) || (curfreq > 4284967295u))  /* This is 2^32-100000000 */
+      curfreq = vna_state.cal_startfreq;
+    if (curfreq >= vna_state.cal_endfreq)
+      curfreq = vna_state.cal_endfreq - 1;
+    vs = vna_state;
+    vs.nfreqs = 1;
+    vs.startfreq = curfreq;
+    vs.endfreq = curfreq+1;
+    
+    int attempts = 0;
+    while (attempts < 3)
+    {
+      if (vna_acquire_dataset(&vs, vna_display_sparm_operation, (void *)touchscreen_rtr_spot_display)) break;
+      attempts++;
+    } 
+    if (attempts == 3) break;
+
+    tft.fillRect(0,0,320,154,ILI9341_BLACK);
+    tft.setTextSize(2);
+    tft.setTextColor(ILI9341_WHITE);
+  
+    mini_snprintf(s,sizeof(s)-1,"Frequency %u Hz",curfreq);
+    tft.setCursor(0,0);
+    tft.print(s);
+  
+    float swr = sparms[0].absv();
+    swr = (1.0f+swr)/(1.0f-swr);
+    mini_snprintf(s,sizeof(s)-1,"SWR %04f\nS11 %04f+j%04f\nS11 pol %04f,%04f", float2int32(swr),float2int32(sparms[0].real), float2int32(sparms[0].imag),float2int32(sparms[0].absv()),float2int32(RAD2DEG(sparms[0].arg())));
+    tft.setCursor(0,24);
+    tft.print(s);
+  
+    Complex z = ((sparms[0]+1.0f)/(-sparms[0]+1.0f))*((float)vna_state.char_impedance);
+    mini_snprintf(s,sizeof(s)-1,"Z %03f+j%03f\nZ pol %03f,%03f", float2int32(z.real), float2int32(z.imag), float2int32(z.absv()), float2int32(RAD2DEG(z.arg())));
+    tft.setCursor(0,72);
+    tft.print(s);
+  
+    float rl = (10.0f / logf(10.0f)) * logf(sparms[0].absq());
+    float Q = fabsf(z.imag)/fabsf(z.real);
+    float Rp = z.absq()/z.real;
+    float Xp = z.absq()/z.imag;
+    mini_snprintf(s,sizeof(s)-1,"RL %04f dB, Q %04f\nRp %03f, Xp %03f", float2int32(rl), float2int32(Q), float2int32(Rp), float2int32(Xp));
+    tft.setCursor(0,104);
+    tft.print(s);
+  
+    float w = 2.0f*3.14159265359f*curfreq;
+    float Ls = z.imag/w*1.0E6f;
+    float Cs = -1.0e12f/(z.imag*w);
+    float Lp = Xp/w*1.0E6f;
+    float Cp = -1.0e12f/(Xp*w);
+  
+    tft.setTextSize(1);
+    mini_snprintf(s,sizeof(s)-1,"Ls %03f uH Cs %03f pF\nLp %03f uH Cp %03f pF",float2int32(Ls), float2int32(Cs), float2int32(Lp), float2int32(Cp));
+    tft.setCursor(0,136);
+    tft.print(s);
+    attempts = 0;
+    while (attempts < 500)
+    {
+      int n = touchscreen_get_button_press(&tft, sizeof(spotpanel) / sizeof(touchscreen_button_panel_entry), spotpanel);
+      if (n >= 0)
+      {
+        switch (n)
+        {
+          case 0: curfreq -= 10000000u; break;
+          case 1: curfreq -= 1000000u; break;
+          case 2: curfreq -= 100000u; break;
+          case 3: curfreq -= 10000u; break;
+          case 4: curfreq -= 1000u; break;
+          case 5: curfreq -= 100u; break;
+          case 6: curfreq -= 10u; break;
+          case 7: curfreq -= 1u; break;
+          case 8: curfreq += 10000000u; break;
+          case 9: curfreq += 1000000u; break;
+          case 10: curfreq += 100000u; break;
+          case 11: curfreq += 10000u; break;
+          case 12: curfreq += 1000u; break;
+          case 13: curfreq += 100u; break;
+          case 14: curfreq += 10u; break;
+          case 15: curfreq += 1u; break;
+          case 16: endspot = true; break;
+        }
+        break;
+      }
+      attempts++;
+      delay(1);
+    }
+  }
+  return 0;
+}
+
 int touchscreen_char_impedance(int code, void *v)
 {
   unsigned int char_imped;
@@ -1055,17 +1197,18 @@ int touchscreen_settings(int code, void *v)
 
 const touchscreen_button_panel_entry mainpanel[] =
 {
-  { 100, 10, 40,   4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Freqs", 2, touchscreen_freqs },
-  { 1200, 90, 40, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Settings", 2, touchscreen_settings },
-  { 1300, 240, 40, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "SWR", 2, touchscreen_swr },
+  { 100, 10, 40,   4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Freq", 2, touchscreen_freqs },
+  { 1200, 78, 40, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Settings", 2, touchscreen_settings },
+  { 1300, 195, 40, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "SWR", 2, touchscreen_swr },
+  { 1400, 250, 40, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Spot", 2, touchscreen_spot },
   { 200, 10, 80,   4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "ZRef", 2, touchscreen_zacq },
   { 201, 80, 80,   4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "ZThru", 2, touchscreen_zacq },
-  { 300, 170, 80, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "S11", 2, touchscreen_sparm },
-  { 301, 230, 80, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "S21", 2, touchscreen_sparm },
+  { 300, 160, 80, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "S11", 2, touchscreen_sparm },
+  { 301, 215, 80, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "S21", 2, touchscreen_sparm },
   { 400, 10, 120, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Open", 2, touchscreen_open },
   { 500, 80, 120, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Short", 2, touchscreen_short },
-  { 600, 170, 120, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Load", 2, touchscreen_load },
-  { 700, 240, 120, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Thru", 2, touchscreen_thru },
+  { 600, 160, 120, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Load", 2, touchscreen_load },
+  { 700, 226, 120, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Thru", 2, touchscreen_thru },
   { 900, 10, 160, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "ReadCal", 2, touchscreen_readcal },
   { 1000, 110, 160, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "WriteCal", 2, touchscreen_writecal },
   { 1100, 10, 200, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Touch Scrn Recalibration", 2, touchscreen_recal },
