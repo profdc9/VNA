@@ -5625,7 +5625,7 @@
   (gr_text SI5351A (at 65.35 90.2 90) (layer F.SilkS)
     (effects (font (size 1 1) (thickness 0.15)))
   )
-  (gr_text "BASIC VNA BY D MARKS\nKW4TI, LICENSED UNDER\nCREATIVE COMMONS\nCC-BY-SA 4.0" (at 123.2154 113.42624) (layer F.SilkS)
+  (gr_text "VNA-O-MIZER\nBY D MARKS KW4TI,\nLICENSED UNDER\nCREATIVE COMMONS\nCC-BY-SA 4.0" (at 123.75 111.25) (layer F.SilkS)
     (effects (font (size 1 1) (thickness 0.15)))
   )
   (gr_text +V (at 148.6408 127.6096 90) (layer F.SilkS)

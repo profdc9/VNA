@@ -3,7 +3,7 @@
   (general
     (links 262)
     (no_connects 0)
-    (area 49.924999 49.924999 150.075001 150.075001)
+    (area 48.252381 29.036639 153.343482 154.699701)
     (thickness 1.6)
     (drawings 37)
     (tracks 1659)
@@ -37,7 +37,7 @@
   )
 
   (setup
-    (last_trace_width 0.5)
+    (last_trace_width 0.25)
     (user_trace_width 0.35)
     (user_trace_width 0.5)
     (user_trace_width 1)
@@ -5860,7 +5860,7 @@
   (gr_text SI5351A (at 79.629 109.6137) (layer F.SilkS)
     (effects (font (size 1 1) (thickness 0.15)))
   )
-  (gr_text "BASIC VNA BY D MARKS\nKW4TI, LICENSED UNDER\nCREATIVE COMMONS\nCC-BY-SA 4.0" (at 129.98704 125.6538) (layer F.SilkS)
+  (gr_text "VNA-O-MIZER VNA BY \nD MARKS KW4TI,\nLICENSED UNDER\nCREATIVE COMMONS\nCC-BY-SA 4.0" (at 91.25 99.5) (layer F.SilkS)
     (effects (font (size 1 1) (thickness 0.15)))
   )
   (gr_text +V (at 148.6408 127.6096 90) (layer F.SilkS)
@@ -7097,8 +7097,8 @@
   (segment (start 86.36 115.951) (end 88.773 115.951) (width 0.35) (layer B.Cu) (net 43) (tstamp 5BE2130F))
   (segment (start 88.773 115.951) (end 90.297 114.427) (width 0.35) (layer B.Cu) (net 43) (tstamp 5BE21311) (status 20))
   (segment (start 82.042 123.19) (end 82.042 122.936) (width 0.35) (layer B.Cu) (net 43) (status 30))
-  (segment (start 56.02224 119.6848) (end 55.6848 119.6848) (width 0.5) (layer B.Cu) (net 44) (status C00000))
-  (segment (start 55.6848 119.6848) (end 54.01075 118.01075) (width 0.5) (layer B.Cu) (net 44) (tstamp 5DB1B17E) (status 400000))
+  (segment (start 56.02224 119.6848) (end 55.6848 119.6848) (width 0.5) (layer B.Cu) (net 44))
+  (segment (start 55.6848 119.6848) (end 54.01075 118.01075) (width 0.5) (layer B.Cu) (net 44) (tstamp 5DB1B17E))
   (segment (start 52.93614 121.9835) (end 52.93614 119.08536) (width 0.5) (layer B.Cu) (net 44))
   (segment (start 52.93614 119.08536) (end 54.01075 118.01075) (width 0.5) (layer B.Cu) (net 44) (tstamp 5D9FBB8D))
   (segment (start 54.01075 118.01075) (end 54.8259 117.1956) (width 0.5) (layer B.Cu) (net 44) (tstamp 5DB1B182))
