@@ -5,7 +5,7 @@
     (no_connects 0)
     (area 48.252381 38.972999 153.343482 154.699701)
     (thickness 1.6)
-    (drawings 43)
+    (drawings 44)
     (tracks 2409)
     (zones 0)
     (modules 141)
@@ -5532,6 +5532,9 @@
     )
   )
 
+  (gr_text 1 (at 59 138.5) (layer F.SilkS)
+    (effects (font (size 1 1) (thickness 0.15)))
+  )
   (gr_text 3V3 (at 61.3537 135.2042 90) (layer F.SilkS)
     (effects (font (size 1 1) (thickness 0.15)))
   )

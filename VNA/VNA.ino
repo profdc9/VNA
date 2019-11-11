@@ -49,8 +49,8 @@ freely, subject to the following restrictions:
 bool touchscreen_enabled;
 #endif
 
-#define PACETIMER TIMER3
-#define PACETIMER_NVIC NVIC_TIMER3
+#define PACETIMER TIMER2
+#define PACETIMER_NVIC NVIC_TIMER2
 
 Si5351 si5351;
 
