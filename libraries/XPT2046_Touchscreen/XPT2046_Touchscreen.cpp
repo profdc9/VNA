@@ -22,8 +22,8 @@
 
 #include "XPT2046_Touchscreen.h"
 
-#define Z_THRESHOLD     800
-#define Z_THRESHOLD_INT	400
+#define Z_THRESHOLD     600
+#define Z_THRESHOLD_INT 300
 #define MSEC_THRESHOLD  3
 //#define SPI_SETTING     SPISettings(2000000, MSBFIRST, SPI_MODE0)
 #define SPI_SETTING SPISettings(4500000ul, MSBFIRST, SPI_MODE0)

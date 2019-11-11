@@ -24,16 +24,24 @@
 #include "debugmsg.h"
 #include "mini-printf.h"
 
+#define TOUCHSCREEN_JOGWHEEL
+
+#ifdef TOUCHSCREEN_JOGWHEEL
+#include "jogwheel.h"
+JogWheel jogwheel;
+#endif
+
 #include "touchscreen.h"
 
 // For the Adafruit shield, these are the default.
 #define TFT_DC PB10
 #define TFT_CS PB8
+#define TFT_RESET PB12
 
 #define XPT2046_CS PB9
 
 XPT2046_Touchscreen ts(XPT2046_CS);
-Adafruit_ILI9341_STM tft = Adafruit_ILI9341_STM(TFT_CS, TFT_DC);
+Adafruit_ILI9341_STM tft = Adafruit_ILI9341_STM(TFT_CS, TFT_DC, TFT_RESET);
 
 touchscreen_calibration tcal;
 
@@ -42,24 +50,24 @@ void touchscreen_spi_reset(void)
   SPI.beginTransaction(SPISettings(180000000ul, MSBFIRST, SPI_MODE0, DATA_SIZE_16BIT));
 }
 
-void touchscreen_draw_button(Adafruit_GFX *gfx, const touchscreen_button_panel_entry *t, bool inverted)
+void touchscreen_draw_button(Adafruit_GFX *gfx, const touchscreen_button_panel_entry *t, int disptype)
 {
   int16_t len = strlen(t->label);
   if (t->w == 0)
   {
     int16_t w = 6 * (len + 1) * t->textsize;
     int16_t h = (t->h == 0) ? 12 * t->textsize : t->h;
-    gfx->fillRoundRect(t->x, t->y, w, h, t->r, inverted ? t->outline_color : t->fill_color);
-    gfx->drawRoundRect(t->x, t->y, w, h, t->r, inverted ? t->fill_color : t->outline_color);
+    gfx->fillRoundRect(t->x, t->y, w, h, t->r, disptype == 1 ? t->outline_color : t->fill_color);
+    gfx->drawRoundRect(t->x, t->y, w, h, t->r, disptype == 1 ? t->fill_color : t->outline_color);
     gfx->setCursor(t->x + 3 * t->textsize, t->y + (h / 2) -  (4 * t->textsize));
   } else
   {
-    gfx->fillRoundRect(t->x, t->y, t->w, t->h, t->r, inverted ? t->outline_color : t->fill_color);
-    gfx->drawRoundRect(t->x, t->y, t->w, t->h, t->r, inverted ? t->fill_color : t->outline_color);
+    gfx->fillRoundRect(t->x, t->y, t->w, t->h, t->r, disptype == 1 ? t->outline_color : t->fill_color);
+    gfx->drawRoundRect(t->x, t->y, t->w, t->h, t->r, disptype == 1 ? t->fill_color : t->outline_color);
     gfx->setCursor(t->x + (t->w / 2) - (len * 3 * t->textsize), t->y + (t->h / 2) - (4 * t->textsize));
   }
   gfx->setTextSize(t->textsize);
-  gfx->setTextColor(inverted ? t->fill_color : t->outline_color);
+  gfx->setTextColor(disptype == 2 ? TOUCHSCREEN_SELECT_COLOR : ((disptype == 1) ? t->fill_color : t->outline_color));
   gfx->print(t->label);
 }
 
@@ -126,19 +134,67 @@ bool touchscreen_solid_press(int16_t &x, int16_t &y, int16_t &z, bool applycal, 
   return true;
 }
 
+bool touchscreen_abort_enable = true;
+
 bool touchscreen_abort(void)
 {
   int16_t xp, yp, zp;
+  if (!touchscreen_abort_enable) return false;
+#ifdef TOUCHSCREEN_JOGWHEEL
+  if (jogwheel.getSelect(true)) return true;
+#endif
   bool aborted = touchscreen_solid_press(xp, yp, zp, false, 300);
   touchscreen_solid_release(300);
   return aborted;
 }
 
+const touchscreen_button_panel_entry *touchscreen_last_tbpe = NULL;
+int16_t touchscreen_select_entry = 0;
+bool touchscreen_redrawentry = false;
+
+int16_t touchscreen_do_select(Adafruit_GFX *gfx, const touchscreen_button_panel_entry *tbpe, void *v, int n)
+{
+#ifdef TOUCHSCREEN_JOGWHEEL
+  touchscreen_redrawentry = true;
+#endif
+  tbpe = &tbpe[n]; 
+  touchscreen_draw_button(gfx, tbpe, 1);
+  touchscreen_solid_release();
+  touchscreen_draw_button(gfx, tbpe, 0);
+  if (tbpe->tc != NULL) tbpe->tc(tbpe->code, v);
+  return tbpe->code;
+}
+
 int16_t touchscreen_get_button_press(Adafruit_GFX *gfx, int n_entries, const touchscreen_button_panel_entry *tbpe, void *v)
 {
   int16_t xp, yp, zp;
-  int n;
+  int16_t n;
   const touchscreen_button_panel_entry *t;
+  
+#ifdef TOUCHSCREEN_JOGWHEEL
+  if (touchscreen_last_tbpe != tbpe)
+  {
+    touchscreen_last_tbpe = tbpe;
+    touchscreen_select_entry = 0;
+    touchscreen_redrawentry = true;
+  } 
+  if (touchscreen_redrawentry)
+  {
+      touchscreen_draw_button(gfx, &tbpe[touchscreen_select_entry], 2);
+      touchscreen_redrawentry = false;
+  }
+  int cts = jogwheel.readCounts();
+  if (cts != 0)
+  {
+    touchscreen_draw_button(gfx, &tbpe[touchscreen_select_entry], 0);
+    touchscreen_select_entry += cts;
+    while (touchscreen_select_entry < 0) touchscreen_select_entry += n_entries;
+    while (touchscreen_select_entry >= n_entries) touchscreen_select_entry -= n_entries;
+    touchscreen_draw_button(gfx, &tbpe[touchscreen_select_entry], 2);
+  }
+  if (jogwheel.getSelect(true)) 
+    return touchscreen_do_select(gfx,tbpe,v,touchscreen_select_entry);
+#endif
   if (!touchscreen_solid_press(xp, yp, zp))
     return -1;
   for (n = 0; n < n_entries; n++)
@@ -159,18 +215,24 @@ int16_t touchscreen_get_button_press(Adafruit_GFX *gfx, int n_entries, const tou
   }
   if (n == n_entries)
     return -1;
-  touchscreen_draw_button(gfx, t, true);
-  touchscreen_solid_release();
-  touchscreen_draw_button(gfx, t, false);
-  if (t->tc != NULL) t->tc(t->code, v);
-  return n;
+  return touchscreen_do_select(gfx,tbpe,v,n);
 }
 
 void touchscreen_wait(void)
 {
   int16_t xp, yp, zp;
-  while (!touchscreen_solid_press(xp, yp, zp, false));
-  touchscreen_solid_release(300);
+  for (;;)
+  {
+    if (touchscreen_solid_press(xp, yp, zp, false))
+    {
+        touchscreen_solid_release(300);
+        while (!touchscreen_solid_press(xp, yp, zp, false));
+        break;
+    }
+#ifdef TOUCHSCREEN_JOGWHEEL
+    if (jogwheel.getSelect(true)) break;
+#endif
+  }
 }
 
 void touchscreen_display_block(int16_t x, int16_t y, const char *c, int16_t textsize, bool center)
@@ -262,7 +324,6 @@ int touchscreen_thru(int code, void *v)
 
 const touchscreen_button_panel_entry calpanel[] =
 {
-  { 0, 240, 210, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " Esc ", 2, NULL },
   { 1, 0, 0,  4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " 1 ", 2, NULL },
   { 2, 0, 30, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " 2 ", 2, NULL },
   { 3, 0, 60, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " 3 ", 2, NULL },
@@ -271,6 +332,7 @@ const touchscreen_button_panel_entry calpanel[] =
   { 6, 0, 150, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " 6 ", 2, NULL },
   { 7, 0, 180, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " 7 ", 2, NULL },
   { 8, 0, 210, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " 8 ", 2, NULL },
+  { 0, 240, 210, 4, 0, 0, 0xFFFF, 0x0000, 0xFFFF, " Esc ", 2, NULL },
 };
 
 void touchscreen_displaycal(void)
@@ -328,18 +390,18 @@ int touchscreen_writecal(int code, void *v)
 
 const touchscreen_button_panel_entry numpanel[] =
 {
+  { 10, 20, 100, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "ENT", 2, NULL },
+  { 7, 80, 100, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 7 ", 2, NULL },
+  { 8, 130, 100, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 8 ", 2, NULL },
+  { 9, 180, 100, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 9 ", 2, NULL },
+  { 11, 20, 150, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "BCK", 2, NULL },
+  { 4, 80, 150, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 4 ", 2, NULL },
+  { 5, 130, 150, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 5 ", 2, NULL },
+  { 6, 180, 150, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 6 ", 2, NULL },
   { 0, 20, 200, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 0 ", 2, NULL },
   { 1, 80, 200,  4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 1 ", 2, NULL },
   { 2, 130, 200, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 2 ", 2, NULL },
   { 3, 180, 200, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 3 ", 2, NULL },
-  { 4, 80, 150, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 4 ", 2, NULL },
-  { 5, 130, 150, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 5 ", 2, NULL },
-  { 6, 180, 150, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 6 ", 2, NULL },
-  { 7, 80, 100, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 7 ", 2, NULL },
-  { 8, 130, 100, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 8 ", 2, NULL },
-  { 9, 180, 100, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " 9 ", 2, NULL },
-  { 10, 20, 100, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "ENT", 2, NULL },
-  { 11, 20, 150, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "BCK", 2, NULL },
   { 12, 240, 192, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, " Esc " , 2, NULL },
 };
 
@@ -504,16 +566,21 @@ typedef struct _touchscreen_axes_parameters
   const char *axislabel1, *axislabel2;
   int16_t dec, dec1, dec2;
   int16_t w, h;
-  int16_t lastx, lasty1, lasty2;
   unsigned char port;
+  bool polar;
+  bool twotrace;
+  bool sweeping;
+  bool erase_marker;
 
-  Complex *axis_data;
-  int16_t num_axis_data;
+  Complex *axis_data_acquire;
+  Complex *axis_data_buffer;
+  int16_t num_axis_data, current_selected;
   const char *format_string;
   Complex *sparms;
 } touchscreen_axes_parameters;
 
 bool touchscreen_smith_chart = false;
+bool touchscreen_sweep_mode = false;
 float touchscreen_axes_impedance_scale = 500.0f;
 float touchscreen_axes_db_scale = 50.0f;
 touchscreen_axes_parameters taps;
@@ -530,18 +597,36 @@ void touchscreen_round_spacing(int minticks, float minval, float maxval, float &
   maxrnd = floorf(maxval / stepspace) * stepspace;
 }
 
-void touchscreen_allocate_axis_data(const char *format_string)
+void touchscreen_allocate_axis_data(const char *format_string, bool polar, bool twotrace)
 {
   taps.num_axis_data = -1;
-  if (taps.axis_data != NULL) free(taps.axis_data);
-  taps.axis_data = NULL;
+  if (taps.axis_data_acquire != NULL) free(taps.axis_data_acquire);
+  if (taps.axis_data_buffer != NULL) free(taps.axis_data_buffer);
+  taps.axis_data_acquire = NULL;
+  taps.axis_data_buffer = NULL;
   taps.format_string = format_string;
+  taps.polar = polar;
+  taps.twotrace = twotrace;
+  taps.current_selected = -1;
+  taps.erase_marker = false;
+  taps.sweeping = touchscreen_sweep_mode;
 }
 
 void touchscreen_free_axis_data(void)
 {
-  if (taps.axis_data != NULL) free(taps.axis_data);
-  taps.axis_data = NULL;
+  if (taps.axis_data_acquire != NULL) free(taps.axis_data_acquire);
+  taps.axis_data_acquire = NULL;
+  if (taps.axis_data_buffer != NULL) free(taps.axis_data_buffer);
+  taps.axis_data_buffer = NULL;
+}
+
+void touchscreen_copy_to_buffer(void)
+{
+  if (taps.axis_data_buffer == NULL)
+    taps.axis_data_buffer = (Complex *)malloc(sizeof(Complex) * taps.num_axis_data);
+  if (taps.axis_data_buffer == NULL) return;
+  for (int i=0;i<taps.num_axis_data;i++)
+     taps.axis_data_buffer[i] = taps.axis_data_acquire[i];
 }
 
 void touchscreen_set_axis_data(int n, int total, const Complex &c)
@@ -549,10 +634,11 @@ void touchscreen_set_axis_data(int n, int total, const Complex &c)
   if (taps.num_axis_data == -1)
   {
     taps.num_axis_data = total;
-    taps.axis_data = (Complex *)malloc(sizeof(Complex) * total);
+    if (taps.axis_data_acquire != NULL) free(taps.axis_data_acquire);
+    taps.axis_data_acquire = (Complex *)malloc(sizeof(Complex) * total);
   }
-  if (taps.axis_data != NULL)
-    taps.axis_data[n] = c;
+  if (taps.axis_data_acquire != NULL)
+    taps.axis_data_acquire[n] = c;
 }
 
 void touchscreen_marker_line(int16_t x)
@@ -565,35 +651,74 @@ void touchscreen_marker_line(int16_t x)
   }
 }
 
-void touchscreen_touch_axis(void)
+bool touchscreen_get_touch_axis(bool axis_buffer, bool redobottom)
 {
-  char s[80];
+  int16_t xp, yp, zp;
+  bool touchscreen_press = false;
+#ifdef TOUCHSCREEN_JOGWHEEL
+  int jogwheel_count = 0;
+  bool jogwheel_stop = false;
+#endif
+  
+  if (taps.num_axis_data < 0) return false;
+  Complex *axis_data = axis_buffer ? taps.axis_data_buffer : taps.axis_data_acquire;
+  if (axis_data == NULL) return true;
+  if ((taps.current_selected >= 0) && (!redobottom))
+  {
+    touchscreen_press = touchscreen_solid_press(xp, yp, zp, true);
+#ifdef TOUCHSCREEN_JOGWHEEL
+    if (jogwheel.getSelect(true)) return true;
+    jogwheel_count = jogwheel.readCounts();
+    if ((!touchscreen_press) && (jogwheel_count == 0)) return false;
+#else
+    if (!touchscreen_press) return false;
+#endif
+  }
+  
   int16_t h = tft.height() - TOUCHSCREEN_BOTTOM_LINES;
   int16_t w = tft.width();
-  int n = taps.num_axis_data / 2;
-  for (;;)
+  int16_t col;
+  char s[80];
+
+  if (!redobottom)
   {
-    int16_t xp, yp, zp;
-    tft.fillRect(0, h, tft.width(), TOUCHSCREEN_BOTTOM_LINES, ILI9341_BLACK);
-    tft.setTextSize(1);
-    tft.setTextColor(ILI9341_WHITE);
-    n = (n < 0) ? 0 : n;
-    n = (n >= taps.num_axis_data) ? taps.num_axis_data - 1 : n;
-    float xaxis = ((taps.maxx - taps.minx) * n) / ((float)taps.num_axis_data) + taps.minx;
-    tft.setCursor(0, h + 8);
-    mini_snprintf(s, sizeof(s) - 1, taps.format_string, float2int32(xaxis), float2int32(taps.axis_data[n].real), float2int32(taps.axis_data[n].imag));
-    tft.print(s);
-    tft.setCursor(250, h + 8);
-    tft.print("Tap Escape");
-    int col = n * ((int)w) / ((int)taps.num_axis_data);
-    touchscreen_marker_line(col);
-    //     tft.writeFastVLine(col, h, TOUCHSCREEN_BOTTOM_LINES, ILI9341_GREEN);
-    while (!touchscreen_solid_press(xp, yp, zp, true));
-    touchscreen_marker_line(col);
-    if (yp >= h) break;
-    n += (8 * (xp - w / 2)) / w;
+    if (taps.current_selected >= 0)
+    {
+      col = taps.current_selected * ((int)w) / ((int)taps.num_axis_data);
+      if (taps.erase_marker) touchscreen_marker_line(col);
+#ifdef TOUCHSCREEN_JOGWHEEL
+      taps.current_selected += jogwheel_count;
+#endif
+      if (touchscreen_press)
+      {
+        if (yp >= h) return true;
+        taps.current_selected += (8 * (xp - w / 2)) / w;
+      }
+      taps.current_selected = (taps.current_selected < 0) ? 0 : taps.current_selected;
+      taps.current_selected = (taps.current_selected >= taps.num_axis_data) ? taps.num_axis_data - 1 : taps.current_selected;
+    }
+    else
+      taps.current_selected = taps.num_axis_data / 2;
   }
-  touchscreen_wait();
+  col = taps.current_selected * ((int)w) / ((int)taps.num_axis_data);
+  touchscreen_marker_line(col);
+  taps.erase_marker = true;
+  
+  tft.fillRect(0, h, tft.width(), TOUCHSCREEN_BOTTOM_LINES, ILI9341_BLACK);
+  tft.setTextSize(1);
+  tft.setTextColor(ILI9341_WHITE);
+  float xaxis = ((taps.maxx - taps.minx) * taps.current_selected) / ((float)taps.num_axis_data) + taps.minx;
+  tft.setCursor(0, h + 8);
+  mini_snprintf(s, sizeof(s) - 1, taps.format_string, float2int32(xaxis), float2int32(axis_data[taps.current_selected].real), float2int32(axis_data[taps.current_selected].imag));
+  tft.print(s);
+  tft.setCursor(250, h + 8);
+  tft.print("Tap Escape");
+  return false;
+}
+
+void touchscreen_touch_axis(bool axis_buffer)
+{
+  while (!touchscreen_get_touch_axis(axis_buffer, false));
 }
 
 int touchscreen_draw_smith_chart(Adafruit_GFX *gfx, touchscreen_axes_parameters *t)
@@ -716,6 +841,77 @@ int touchscreen_smith(int code, void *v)
   touchscreen_wait();
 }
 
+void touchscreen_correct_x(int16_t &x, touchscreen_axes_parameters *t)
+{
+  if (x < 0) x = 0;
+  if (x >= t->w) x = t->w - 1; 
+}
+
+void touchscreen_correct_y(int16_t &y, touchscreen_axes_parameters *t)
+{
+  if (y < 0) y = 0;
+  if (y >= t->h) y = t->h - 1; 
+}
+
+void touchscreen_get_coor_axis_1(int16_t &x, int16_t &y, int n, int total, touchscreen_axes_parameters *t, Complex *axis_data)
+{ 
+  if (t->polar)
+  {
+    x = t->w / 2 + (axis_data[n].real * ((float)t->h) * TOUCHSCREEN_SMITH_RADIUS);
+    y = t->h / 2 - (axis_data[n].imag * ((float)t->h) * TOUCHSCREEN_SMITH_RADIUS);
+  } else
+  {
+    x = (n * (int)t->w) / total;
+    y = (t->maxy1 - axis_data[n].real) * t->slopey1;
+  }
+  touchscreen_correct_x(x, t);
+  touchscreen_correct_y(y, t);
+}
+
+void touchscreen_get_coor_axis_2(int16_t &x, int16_t &y, int n, int total, touchscreen_axes_parameters *t, Complex *axis_data)
+{ 
+  x = (n * (int)t->w) / total;
+  touchscreen_correct_x(x, t);
+  y = (t->maxy2 - axis_data[n].imag) * t->slopey2;
+  touchscreen_correct_y(y, t);
+}
+
+void touchscreen_draw_axes_part(int total, int n1, int n2, bool axis_buffer)
+{
+  touchscreen_axes_parameters *t = &taps;
+  
+  Complex *axis_data = axis_buffer ? taps.axis_data_buffer : taps.axis_data_acquire;
+  if (axis_data == NULL) return;
+  
+  if (n1 < 1) n1 = 1;
+  for (int n=n1;n<n2;n++)
+  {
+    int16_t x1, y1, x2, y2;
+    touchscreen_get_coor_axis_1(x1, y1, n-1, total, t, axis_data);
+    touchscreen_get_coor_axis_1(x2, y2, n, total, t, axis_data);
+    if (t->polar)
+    {
+      uint16_t line1_color = (n * 31) / total;
+      line1_color = (line1_color << 11) | (31 - line1_color);
+      tft.writeLine(x1,y1,x2,y2,line1_color);
+    } else
+    {
+      tft.writeLine(x1,y1,x2,y2,ILI9341_RED);
+      if (t->twotrace)
+      {
+        touchscreen_get_coor_axis_2(x1, y1, n-1, total, t, axis_data);
+        touchscreen_get_coor_axis_2(x2, y2, n, total, t, axis_data);
+        tft.writeLine(x1,y1,x2,y2,ILI9341_BLUE);
+      }
+    }
+  }
+}
+
+void touchscreen_draw_axes_all(int total, bool axis_buffer)
+{
+  touchscreen_draw_axes_part(total, 1, total, axis_buffer);
+}
+
 int touchscreen_rtr_swr_display(int n, int total, unsigned int freq, bool ch2, Complex imp, Complex zthru)
 {
   touchscreen_axes_parameters *t = &taps;
@@ -723,88 +919,108 @@ int touchscreen_rtr_swr_display(int n, int total, unsigned int freq, bool ch2, C
   Complex ref = (imp - z0) / (imp + z0);
   float swr = ref.absv();
   swr = (1.0f + swr) / (1.0f - swr);
-  touchscreen_set_axis_data(n, total, Complex(swr));
   if ((swr > 0.5) && (swr < 1.0f)) swr = 1.0f;
-  if ((swr <= 0.5) || (swr > 9.5f)) swr = 9.5f;
-  int16_t ycoor1 = (t->maxy1 - swr) * t->slopey1;
-  int16_t xcoor = (freq - t->minx) * t->slopex;
-  if (xcoor < 0) xcoor = 0;
-  if (xcoor >= t->w) xcoor = t->w - 1;
-  if (ycoor1 < 0) ycoor1 = 0;
-  if (ycoor1 >= t->h) ycoor1 = t->h - 1;
-  if (t->lasty1 >= 0)
-    tft.writeLine(t->lastx, t->lasty1, xcoor, ycoor1, ILI9341_LIGHTGREY);
-  t->lastx = xcoor;
-  t->lasty1 = ycoor1;
+  if ((swr <= 0.5) || (swr >= 999.0f)) swr = 999.0f;
+  touchscreen_set_axis_data(n, total, Complex(swr));
+  if (!t->sweeping) touchscreen_draw_axes_part(total, n, n+1, false);
+}
+
+bool touchscreen_check_calibration(void)
+{
+  if (vna_state.calib_state & VNA_VALID_CALIB_1PT) return true;
+  touchscreen_display_message("Calibration required");
+  touchscreen_wait();
+  return false;
+}
+
+void touchscreen_display_acquiring(void)
+{
+  tft.fillScreen(ILI9341_BLACK);
+  touchscreen_display_message("Acquiring...");
+  return;
+}
+
+bool touchscreen_check_two_port(void)
+{
+  if (vna_state.calib_state & VNA_VALID_CALIB_2PT) return true;
+  touchscreen_display_message("2 port calibration\nrequired");
+  touchscreen_wait();
+  return false;
+}
+
+int touchscreen_acquire_cleanup(void)
+{
+      touchscreen_free_axis_data();
+      touchscreen_abort_enable = true;
+      return 0;
 }
 
 int touchscreen_swr(int code, void *v)
 {
+  if (!touchscreen_check_calibration()) return 0;
   taps.minx = vna_state.startfreq;
   taps.maxx = vna_state.endfreq;
   taps.miny1 = 0.5f;
   taps.maxy1 = 9.5f;
   taps.axislabel1 = "SWR";
   taps.axislabel2 = NULL;
-  touchscreen_allocate_axis_data("%f: SWR %02f");
-  tft.fillScreen(ILI9341_BLACK);
-  touchscreen_draw_axes(&tft, &taps);
-  taps.lasty1 = -1;
-  taps.lasty2 = -1;
-  switch (vna_acquire_impedance(touchscreen_rtr_swr_display))
+  touchscreen_allocate_axis_data("%f: SWR %02f", false, false);
+
+  touchscreen_abort_enable = true;
+  if (taps.sweeping)
+     touchscreen_display_acquiring();
+  else
   {
-    case 0: touchscreen_display_message("Can only be\nperformed after 1\nor 2 port calibration");
-      touchscreen_wait();
-      break;
-    case 1: touchscreen_display_message("Acquisition aborted");
-      touchscreen_wait();
-      break;
-    case 2: touchscreen_touch_axis();
-      break;
+    tft.fillScreen(ILI9341_BLACK);
+    touchscreen_draw_axes(&tft, &taps);
   }
-  touchscreen_free_axis_data();
-  return 0;
+  for (;;)
+  {
+    vna_acquire_state vas;
+    vna_setup_acquire_dataset(&vas, &vna_state, vna_display_acq_operation, (void *)touchscreen_rtr_swr_display);
+    do
+    {
+      if ((vas.vacs == VNA_ACQUIRE_RECORDED_STATE) && (taps.sweeping) && (!touchscreen_abort_enable))
+      {
+        if (touchscreen_get_touch_axis(true,false))
+          return touchscreen_acquire_cleanup();
+      }  
+      vna_operation_acquire_dataset(&vas);
+    } while ((vas.vacs != VNA_ACQUIRE_TIMEOUT) && (vas.vacs != VNA_ACQUIRE_ABORT) && (vas.vacs != VNA_ACQUIRE_COMPLETE));
+    if (vas.vacs != VNA_ACQUIRE_COMPLETE)
+    {
+      touchscreen_display_message("Acquisition aborted");
+      touchscreen_wait();
+      return touchscreen_acquire_cleanup();
+    }
+    if (taps.sweeping)
+    {
+      touchscreen_copy_to_buffer();
+      tft.fillScreen(ILI9341_BLACK);
+      touchscreen_draw_axes(&tft, &taps);
+      touchscreen_draw_axes_all(taps.num_axis_data,true);
+      touchscreen_get_touch_axis(true,true);
+    } else
+    {
+      touchscreen_touch_axis(false);
+      return touchscreen_acquire_cleanup();
+    }
+    touchscreen_abort_enable = false;
+  }
 }
 
 int touchscreen_rtr_zacq_display(int n, int total, unsigned int freq, bool ch2, Complex imp, Complex zthru)
 {
   touchscreen_axes_parameters *t = &taps;
-  int16_t xcoor = (freq - t->minx) * t->slopex;
-  int16_t ycoor1, ycoor2;
-  if (t->port == 1)
-  {
-    ycoor1 = (t->maxy1 - imp.real) * t->slopey1;
-    ycoor2 = (t->maxy2 - imp.imag) * t->slopey2;
-    touchscreen_set_axis_data(n, total, imp);
-  } else
-  {
-    ycoor1 = (t->maxy1 - zthru.real) * t->slopey1;
-    ycoor2 = (t->maxy2 - zthru.imag) * t->slopey2;
-    touchscreen_set_axis_data(n, total, zthru);
-  }
-  if (xcoor < 0) xcoor = 0;
-  if (xcoor >= t->w) xcoor = t->w - 1;
-  if (ycoor1 < 0) ycoor1 = 0;
-  if (ycoor1 >= t->h) ycoor1 = t->h - 1;
-  if (ycoor2 < 0) ycoor2 = 0;
-  if (ycoor2 >= t->h) ycoor2 = t->h - 1;
-  if (t->lasty1 >= 0)
-    tft.writeLine(t->lastx, t->lasty1, xcoor, ycoor1, ILI9341_RED);
-  if (t->lasty2 >= 0)
-    tft.writeLine(t->lastx, t->lasty2, xcoor, ycoor2, ILI9341_BLUE);
-  t->lastx = xcoor;
-  t->lasty1 = ycoor1;
-  t->lasty2 = ycoor2;
+  touchscreen_set_axis_data(n, total, t->port == 1 ? imp : zthru);
+  if (!t->sweeping) touchscreen_draw_axes_part(total, n, n+1, false);
 }
 
 int touchscreen_zacq(int code, void *v)
 {
-  if ((code == 201) && (!(vna_state.calib_state & VNA_VALID_CALIB_2PT)))
-  {
-    touchscreen_display_message("2 port calibration\nrequired");
-    touchscreen_wait();
-    return 0;
-  }
+  if (!touchscreen_check_calibration()) return 0;
+  if (code == 201)
+    if (!touchscreen_check_two_port()) return 0;
   taps.port = (code == 201) ? 2 : 1;
   taps.minx = vna_state.startfreq;
   taps.maxx = vna_state.endfreq;
@@ -814,86 +1030,81 @@ int touchscreen_zacq(int code, void *v)
   taps.miny2 = -touchscreen_axes_impedance_scale;
   taps.maxy2 = touchscreen_axes_impedance_scale;
   taps.axislabel2 = "Imag";
-  tft.fillScreen(ILI9341_BLACK);
-  touchscreen_allocate_axis_data("%f: Z(%03f,%03f)");
-  touchscreen_draw_axes(&tft, &taps);
-  taps.lasty1 = -1;
-  taps.lasty2 = -1;
-  switch (vna_acquire_impedance(touchscreen_rtr_zacq_display))
-  {
-    case 0: touchscreen_display_message("Can only be\nperformed after 1\nor 2 port calibration");
-      touchscreen_wait();
-      break;
-    case 1: touchscreen_display_message("Acquisition aborted");
-      touchscreen_wait();
-      break;
-    case 2: touchscreen_draw_axes(&tft, &taps);
-      touchscreen_touch_axis();
-      break;
+  touchscreen_allocate_axis_data("%f: Z(%03f,%03f)", false, true);
+
+  touchscreen_abort_enable = true;
+  if (taps.sweeping)
+     touchscreen_display_acquiring();
+  else
+  {  
+     tft.fillScreen(ILI9341_BLACK);
+     touchscreen_draw_axes(&tft, &taps);
   }
-  touchscreen_free_axis_data();
-  return 0;
+  for (;;)
+  {
+    vna_acquire_state vas;
+    vna_setup_acquire_dataset(&vas, &vna_state, vna_display_acq_operation, (void *)touchscreen_rtr_zacq_display);
+    do
+    {
+      if ((vas.vacs == VNA_ACQUIRE_RECORDED_STATE) && (taps.sweeping) && (!touchscreen_abort_enable))
+      {
+        if (touchscreen_get_touch_axis(true,false))
+           return touchscreen_acquire_cleanup();
+      }  
+      vna_operation_acquire_dataset(&vas);
+    } while ((vas.vacs != VNA_ACQUIRE_TIMEOUT) && (vas.vacs != VNA_ACQUIRE_ABORT) && (vas.vacs != VNA_ACQUIRE_COMPLETE));
+    if (vas.vacs != VNA_ACQUIRE_COMPLETE)
+    {
+      touchscreen_display_message("Acquisition aborted");
+      touchscreen_wait();
+      return touchscreen_acquire_cleanup();
+    }
+    if (taps.sweeping)
+    {
+      touchscreen_copy_to_buffer();
+      tft.fillScreen(ILI9341_BLACK);
+      touchscreen_draw_axes(&tft, &taps);
+      touchscreen_draw_axes_all(taps.num_axis_data,true);
+      touchscreen_get_touch_axis(true,true);
+    } else
+    {
+      touchscreen_touch_axis(false);
+      return touchscreen_acquire_cleanup();
+    }
+    touchscreen_abort_enable = false;
+  }
 }
 
 int touchscreen_rtr_sparm_display(int n, int total, unsigned int freq, bool ch2, Complex s11, Complex s21)
 {
   touchscreen_axes_parameters *t = &taps;
-  int16_t xcoor, ycoor1, ycoor2;
-  uint16_t line1_color;
   if (touchscreen_smith_chart)
   {
-    if (taps.port == 2) s11 = s21;
-    xcoor = t->w / 2 + (s11.real * ((float)t->h) * TOUCHSCREEN_SMITH_RADIUS);
-    ycoor1 = t->h / 2 - (s11.imag * ((float)t->h) * TOUCHSCREEN_SMITH_RADIUS);
-    line1_color = (n * 31) / total;
-    line1_color = (line1_color << 11) | (31 - line1_color);
+    touchscreen_set_axis_data(n, total, t->port == 1 ? s11 : s21);
   } else
   {
+    if (t->port == 2) s11 = s21;
     float s11db = (10.0f / logf(10.0f)) * logf(s11.absq());
     float s11deg = RAD2DEG(s11.arg());
-    float s21db, s21deg;
-    if (ch2)
-    {
-      s21db = (10.0f / logf(10.0f)) * logf(s21.absq());
-      s21deg = RAD2DEG(s21.arg());
-    }
-    xcoor = (freq - t->minx) * t->slopex;
-    if (t->port == 1)
-    {
-      ycoor1 = (t->maxy1 - s11db) * t->slopey1;
-      ycoor2 = (t->maxy2 - s11deg) * t->slopey2;
-      touchscreen_set_axis_data(n, total, Complex(s11db, s11deg));
-    } else
-    {
-      ycoor1 = (t->maxy1 - s21db) * t->slopey1;
-      ycoor2 = (t->maxy2 - s21deg) * t->slopey2;
-      touchscreen_set_axis_data(n, total, Complex(s21db, s21deg));
-    }
-    line1_color = ILI9341_RED;
+    touchscreen_set_axis_data(n, total, Complex(s11db, s11deg));
   }
-  if (xcoor < 0) xcoor = 0;
-  if (xcoor >= t->w) xcoor = t->w - 1;
-  if (ycoor1 < 0) ycoor1 = 0;
-  if (ycoor1 >= t->h) ycoor1 = t->h - 1;
-  if (ycoor2 < 0) ycoor2 = 0;
-  if (ycoor2 >= t->h) ycoor2 = t->h - 1;
-  if (t->lasty1 >= 0)
-    tft.writeLine(t->lastx, t->lasty1, xcoor, ycoor1, line1_color);
-  if ((!touchscreen_smith_chart) && (t->lasty2 >= 0))
-    tft.writeLine(t->lastx, t->lasty2, xcoor, ycoor2, ILI9341_BLUE);
-  t->lastx = xcoor;
-  t->lasty1 = ycoor1;
-  t->lasty2 = ycoor2;
+  if (!t->sweeping) touchscreen_draw_axes_part(total, n, n+1, false);
 }
+
+void touchscreen_sparm_background(touchscreen_axes_parameters *t)
+{
+  if (touchscreen_smith_chart)
+    touchscreen_draw_smith_chart(&tft,t);
+  else
+    touchscreen_draw_axes(&tft,t);
+}
+
 
 int touchscreen_sparm(int code, void *v)
 {
-  if ((code == 301) && (!(vna_state.calib_state & VNA_VALID_CALIB_2PT)))
-  {
-    touchscreen_display_message("2 port calibration\nrequired");
-    touchscreen_wait();
-    return 0;
-  }
+  if (!touchscreen_check_calibration()) return 0;
+  if (code == 301)
+    if (!touchscreen_check_two_port()) return 0;
   taps.port = (code == 301) ? 2 : 1;
   taps.minx = vna_state.startfreq;
   taps.maxx = vna_state.endfreq;
@@ -903,36 +1114,50 @@ int touchscreen_sparm(int code, void *v)
   taps.miny2 = -180.0f;
   taps.maxy2 = 180.0f;
   taps.axislabel2 = "Phase";
-  touchscreen_allocate_axis_data("%f: %03f dB %03f degs");
-  tft.fillScreen(ILI9341_BLACK);
-  if (touchscreen_smith_chart)
-    touchscreen_draw_smith_chart(&tft, &taps);
+  touchscreen_allocate_axis_data("%f: %03f dB %03f degs", touchscreen_smith_chart, !touchscreen_smith_chart);
+
+  touchscreen_abort_enable = true;
+  if (taps.sweeping)
+     touchscreen_display_acquiring();
   else
-    touchscreen_draw_axes(&tft, &taps);
-  taps.lasty1 = -1;
-  taps.lasty2 = -1;
-  switch (vna_acquire_sparm(touchscreen_rtr_sparm_display))
   {
-    case 0: touchscreen_display_message("Can only be\nperformed after 1\nor 2 port calibration");
-      touchscreen_wait();
-      break;
-    case 1: touchscreen_display_message("Acquisition aborted");
-      touchscreen_wait();
-      break;
-    case 2: if (touchscreen_smith_chart)
-      {
-        touchscreen_draw_smith_chart(&tft, &taps);
-        touchscreen_wait();
-      }
-      else
-      {
-        touchscreen_draw_axes(&tft, &taps);
-        touchscreen_touch_axis();
-      }
-      break;
+    tft.fillScreen(ILI9341_BLACK);
+    touchscreen_sparm_background(&taps);
   }
-  touchscreen_free_axis_data();
-  return 0;
+  for (;;)
+  {
+    vna_acquire_state vas;
+    vna_setup_acquire_dataset(&vas, &vna_state, vna_display_sparm_operation, (void *)touchscreen_rtr_sparm_display);
+    do
+    {
+      if ((vas.vacs == VNA_ACQUIRE_RECORDED_STATE) && (taps.sweeping) && (!touchscreen_abort_enable))
+      {
+        if (touchscreen_get_touch_axis(true,false))
+           return touchscreen_acquire_cleanup();
+      }  
+      vna_operation_acquire_dataset(&vas);
+    } while ((vas.vacs != VNA_ACQUIRE_TIMEOUT) && (vas.vacs != VNA_ACQUIRE_ABORT) && (vas.vacs != VNA_ACQUIRE_COMPLETE));
+    if (vas.vacs != VNA_ACQUIRE_COMPLETE)
+    {
+      touchscreen_display_message("Acquisition aborted");
+      touchscreen_wait();
+      return touchscreen_acquire_cleanup();
+    }
+    if (taps.sweeping)
+    {
+      touchscreen_copy_to_buffer();
+      tft.fillScreen(ILI9341_BLACK);
+      touchscreen_sparm_background(&taps);
+      touchscreen_draw_axes_all(taps.num_axis_data,true);
+      touchscreen_get_touch_axis(true,true);
+    }
+    if ((!taps.sweeping) || (touchscreen_smith_chart))  
+    {
+      touchscreen_touch_axis(false);
+      return touchscreen_acquire_cleanup();
+    }
+    touchscreen_abort_enable = false;
+  }
 }
 
 const touchscreen_button_panel_entry spotpanel[] =
@@ -1164,9 +1389,17 @@ int touchscreen_series(int code, void *v)
   touchscreen_wait();
 }
 
+int touchscreen_sweep_set(int code, void *v)
+{
+  bool sweepchoice;
+  touchscreen_sweep_mode = !touchscreen_sweep_mode;
+  touchscreen_display_message(touchscreen_sweep_mode ? "Sweep On" : "Sweep Off");
+  touchscreen_wait();
+}
+
 const touchscreen_button_panel_entry settingspanel[] =
 {
-  { 0, 0, 200, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Return to Main Menu", 2, NULL },
+  { 100, 0, 0,   4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Sweep", 2, touchscreen_sweep_set },
   { 200, 0, 40,   4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Char Imped", 2, touchscreen_char_impedance },
   { 300, 150, 40,   4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Averages", 2, touchscreen_averages },
   { 400, 0, 80, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Imped Scale", 2, touchscreen_impedance_scale },
@@ -1175,7 +1408,8 @@ const touchscreen_button_panel_entry settingspanel[] =
   { 700, 80, 120,  4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Atten", 2, touchscreen_atten },
   { 800, 160, 120,  4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Series/Shunt", 2, touchscreen_series },
   { 900, 0, 160,  4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Serial Rem", 2, touchscreen_remote },
-  { 1000, 160, 160,  4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Cal Freq ", 2, touchscreen_calfreqs }
+  { 1000, 160, 160,  4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Cal Freq ", 2, touchscreen_calfreqs },
+  { 0, 0, 200, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Return to Main Menu", 2, NULL },
 };
 
 int touchscreen_settings(int code, void *v)
@@ -1223,7 +1457,7 @@ void touchscreen_title(void)
   tft.setCursor(90, 0);
   tft.print("VNA-o-mizer by KW4TI");
   tft.setCursor(60, 10);
-  tft.print("(c) 2018 D. Marks, CC-BY-SA 4.0");
+  tft.print("(c) 2019 D. Marks, CC-BY-SA 4.0");
 }
 
 void touchscreen_task(void)
@@ -1301,6 +1535,9 @@ void touchscreen_calibrate(void)
 }
 
 void touchscreen_setup() {
+#ifdef TOUCHSCREEN_JOGWHEEL
+  jogwheel.setup();
+#endif
   SPI.begin(); //Initialize the SPI_1 port.
   touchscreen_spi_reset();
   tft.begin(SPI, 18000000ul);

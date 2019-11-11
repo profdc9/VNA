@@ -33,14 +33,6 @@ freely, subject to the following restrictions:
 
 #define VNA_TOUCHSCREEN
 
-extern volatile short sampCUR, sampVOLT, sampCUR2;
-
-extern volatile int number_to_sum;
-extern volatile int current_summed;
-
-extern volatile int sampCURI, sampVOLTI, sampCUR2I, sampPWR;
-extern volatile int sampCURQ, sampVOLTQ, sampCUR2Q;
-
 typedef struct _vna_flash_header
 {
   unsigned int flash_header_1;
@@ -109,13 +101,26 @@ typedef struct _vna_acquire_dataset_state
   int cur2q;  
 } vna_acquire_dataset_state;
 
-typedef int (*vna_idle_function)(void *v);
-void vna_set_idle_function(vna_idle_function f, void *v = NULL);
-
 typedef int (*vna_acquire_dataset_operation)(vna_acquire_dataset_state *vads, void *v);
 typedef int (*vna_report_trans_reflected)(int n, int total, unsigned int, bool ch2, Complex trans, Complex ref);
 
 bool vna_acquire_dataset(vna_acquisition_state *vs, vna_acquire_dataset_operation vado, void *v);
+
+typedef enum _vna_acquire_current_state { VNA_ACQUIRE_COMPLETE=0, VNA_ACQUIRE_ABORT, VNA_ACQUIRE_TIMEOUT, VNA_ACQUIRE_RECORDED_STATE, VNA_ACQUIRE_RECORDED_STATE_WAITING } vna_acquire_current_state;
+
+typedef struct _vna_acquire_state
+{
+  vna_acquisition_state        *vs;
+  bool                          wait_for_end;
+  bool                          check_interruption;
+  unsigned int                  freqstep;
+  unsigned int                  timeout;
+  unsigned int                  inittime;
+  int                           n;
+  vna_acquire_current_state     vacs;
+  vna_acquire_dataset_operation vado;
+  void                         *vado_v;
+} vna_acquire_state;
 
 void printfloat(float f);
 int vna_writecal(int n);
@@ -136,5 +141,7 @@ void vna_setup_remote_serial(void);
 int vna_calset_frequencies(unsigned int nfreqs, unsigned int startfreq, unsigned int endfreq);
 int vna_display_sparm_operation(vna_acquire_dataset_state *vads, void *va);
 int vna_display_acq_operation(vna_acquire_dataset_state *vads, void *va);
+vna_acquire_current_state vna_setup_acquire_dataset(vna_acquire_state *vas, vna_acquisition_state *vs, vna_acquire_dataset_operation vado, void *v);
+vna_acquire_current_state vna_operation_acquire_dataset(vna_acquire_state *vas);
 
 #endif  /* _VNA_H */

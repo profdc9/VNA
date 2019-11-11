@@ -43,12 +43,14 @@ freely, subject to the following restrictions:
 #define AD_VOLT_PIN PB0
 #define AD_CUR2_PIN PA2
 #define ATTEN_PIN PB14
-#define TOUCHSCREEN_DISABLE_PIN PB13
+#define TOUCHSCREEN_DISABLE_PIN PB1
 
 #ifdef VNA_TOUCHSCREEN
 bool touchscreen_enabled;
 #endif
 
+#define PACETIMER TIMER3
+#define PACETIMER_NVIC NVIC_TIMER3
 
 Si5351 si5351;
 
@@ -57,7 +59,7 @@ int pinMapADCVOLTPINin;
 int pinMapADCCUR2PINin;
 
 const vna_flash_header flash_header = { 0xDEADBEEF, 0xC001ACE5 };
-vna_acquisition_state vna_state = {3000000u, 30000000u, 3000000u, 30000000u, 50u, 64, 1000, VNA_MAX_CAL_FREQS, VNA_MAX_ACQ_FREQS, 0, 1, 0, 1, VNA_NO_CALIB };
+vna_acquisition_state vna_state = {3000000u, 30000000u, 3000000u, 30000000u, 50u, 64, 1000, VNA_MAX_CAL_FREQS, VNA_MAX_ACQ_FREQS, 0, 1, 0, 0, VNA_NO_CALIB };
 vna_calib_oneport *vna_1pt = NULL;
 vna_calib_freq_parm vna_calib[VNA_MAX_CAL_FREQS];
 
@@ -72,13 +74,14 @@ void setup_analog(int accurate)
   adc_set_reg_seqlen(ADC2, 1);
 }
 
-volatile short sampCUR, sampVOLT, sampCUR2;
 
-volatile int number_to_sum = 256;
-volatile int current_summed = 0;
+volatile unsigned int number_to_sum = 256;
+volatile unsigned int current_summed = 0;
 
 volatile int sampCURI, sampVOLTI, sampCUR2I, sampPWR;
 volatile int sampCURQ, sampVOLTQ, sampCUR2Q;
+
+volatile short sampCUR, sampVOLT, sampCUR2;
 
 unsigned short analogReadPins(void)
 {
@@ -138,23 +141,18 @@ static void initialize_cortex_m3_cycle_counter(void)
   DWT_CTRL |= CYCCNTENA;
 }
 
-volatile unsigned int diftick;
-volatile unsigned int adclocks;
 volatile unsigned int lasttick = 0;
 
-unsigned int numphases = 4;
+volatile unsigned int numphases = 4;
 volatile unsigned int curphase = 0;
-
-//unsigned int timephase[30];
 
 void ifClockInterrupt(void)
 {
   unsigned int timerval = CPU_CYCLES;
-
-  diftick = ((unsigned int)(timerval - lasttick));
+  unsigned int diftick = ((unsigned int)(timerval - lasttick));
   lasttick = timerval;
 
-  if (current_summed < number_to_sum)
+  if (current_summed <= number_to_sum)
   {
     if (current_summed == 0)
     {
@@ -164,28 +162,26 @@ void ifClockInterrupt(void)
       sampPWR = 0;
     }
     current_summed++;
-    //timephase[0] = timerval;
-    timer_pause(TIMER3);
-    timer_set_count(TIMER3, 0);
+    timer_pause(PACETIMER);
+    timer_set_count(PACETIMER, 0);
+    if (current_summed > number_to_sum)
+        return;
     timerval = diftick / numphases;
     if (timerval > (F_CPU / 200000u))
     {
-      timer_set_reload(TIMER3, timerval);
-      //    timer_set_compare(TIMER3,1,0);
-      timer_generate_update(TIMER3);
+      timer_set_reload(PACETIMER, timerval);
+      //    timer_set_compare(PACETIMER,1,0);
+      timer_generate_update(PACETIMER);
       curphase = 0;
-      timer_resume(TIMER3);
-    }
+      timer_resume(PACETIMER);
+    } 
   }
 }
 
 void timerContInterrupt(void)
 {
-  //unsigned int timerval = CPU_CYCLES;
-
   if (curphase < numphases)
   {
-    //timephase[curphase] = timerval;
     analogReadPins();
     switch (curphase & 0x03)
     {
@@ -216,9 +212,9 @@ void setup_if_clock(void)
   nvic_irq_set_priority(NVIC_EXTI_15_10, 2);
   attachInterrupt(IFCLOCK_PIN, ifClockInterrupt, RISING);
 
-  nvic_irq_set_priority(NVIC_TIMER3, 2);
-  timer_init(TIMER3);
-  timer_attach_interrupt(TIMER3, 1, timerContInterrupt);
+  nvic_irq_set_priority(PACETIMER_NVIC, 2);
+  timer_init(PACETIMER);
+  timer_attach_interrupt(PACETIMER, 1, timerContInterrupt);
 }
 
 void vna_setup_remote_serial(void)
@@ -258,70 +254,11 @@ void free_calib_memory(void)
   vna_state.calib_state &= ~VNA_ALL_1PT;
 }
 
-vna_idle_function vif = NULL;
-void *vif_data = NULL;
-
-void vna_set_idle_function(vna_idle_function f, void *v)
-{
-  vif = f;
-  vif_data = v;  
-}
-
-int acquire_sample(unsigned int averages, unsigned int timeout)
-{
-  bool timedout = false;
-  unsigned int inittime, curtime;
-
-  //timer_init(TIMER3);
-  timer_pause(TIMER3);
-  timer_attach_interrupt(TIMER3, 1, timerContInterrupt);
-  timer_set_prescaler(TIMER3, 0);
-  timer_set_mode(TIMER3, 1, TIMER_OUTPUT_COMPARE);
-  timer_set_count(TIMER3, 0);
-  timer_set_reload(TIMER3,65535);
-  timer_set_compare(TIMER3, 1, 0);
-  timer_generate_update(TIMER3);
-
-  timeout = timeout * (F_CPU / 1000u);
-  /* wait for previous acquisition to stop */
-  inittime = CPU_CYCLES;
-  timedout = false;
-  current_summed = 0;
-  while (current_summed < number_to_sum)
-  {
-    curtime = CPU_CYCLES;
-    if (((unsigned int)(curtime - inittime)) > timeout)
-    {
-      timedout = true;
-      break;
-    }
-    if (vif != NULL) vif(vif_data);
-  }
-  if (timedout) return -1;
-  number_to_sum = averages;
-  current_summed = 0;
-  /* wait for previous acquisition to stop */
-  inittime = CPU_CYCLES;
-  timedout = false;
-  while (current_summed < number_to_sum)
-  {
-    curtime = CPU_CYCLES;
-    if (((unsigned int)(curtime - inittime)) > timeout)
-    {
-      timedout = true;
-      break;
-    }
-    if (vif != NULL) vif(vif_data);
-  }
-  if (timedout) return -1;
-  return 0;
-}
-
 int setup_frequency_acquire(unsigned int frequency)
 {
   if ((frequency < VNA_MIN_FREQ) || (frequency > VNA_MAX_FREQ))
     return -1;
-
+  
   rcc_clk_enable(RCC_I2C1);
   si5351.output_enable(SI5351_CLK0, 0);
   si5351.output_enable(SI5351_CLK1, 0); 
@@ -345,43 +282,6 @@ int setup_frequency_acquire(unsigned int frequency)
   return 0;
 }
 
-int vna_display_dataset_operation(vna_acquire_dataset_state *vads, void *va)
-{
-  if (vna_state.csv)
-  {
-    console_print(vads->freq);
-    console_print(",");
-    console_print(vads->volti);
-    console_print(",");
-    console_print(vads->voltq);
-    console_print(",");
-    console_print(vads->curi);
-    console_print(",");
-    console_print(vads->curq);
-    console_print(",");
-    console_print(vads->cur2i);
-    console_print(",");
-    console_println(vads->cur2q);
-  } else
-  {
-    console_print("Freq ");
-    console_print(vads->freq);
-    console_print(": Volt (");
-    console_print(vads->volti);
-    console_print(",");
-    console_print(vads->voltq);
-    console_print(") Cur1 (");
-    console_print(vads->curi);
-    console_print(",");
-    console_print(vads->curq);
-    console_print(") Cur2 (");
-    console_print(vads->cur2i);
-    console_print(",");
-    console_print(vads->cur2q);
-    console_println(")");
-  }
-}
-
 void vna_initialize_si5351()
 {
   rcc_clk_enable(RCC_I2C1);
@@ -397,43 +297,112 @@ void vna_initialize_si5351()
   rcc_clk_disable(RCC_I2C1);
 }
 
+vna_acquire_current_state vna_operation_acquire_dataset(vna_acquire_state *vas)
+{
+   vna_acquisition_state *vs = vas->vs;
+   unsigned int freq = vs->startfreq + vas->freqstep * vas->n;
+ 
+   if (vas->vacs == VNA_ACQUIRE_RECORDED_STATE)
+   {
+     number_to_sum = 0;
+     if (vas->wait_for_end)
+     {
+       setup_frequency_acquire(freq);
+       timer_pause(PACETIMER);
+       timer_attach_interrupt(PACETIMER, 1, timerContInterrupt);
+       timer_set_prescaler(PACETIMER, 0);
+       timer_set_mode(PACETIMER, 1, TIMER_OUTPUT_COMPARE);
+       timer_set_count(PACETIMER, 0);
+       timer_set_reload(PACETIMER,65535);
+       timer_set_compare(PACETIMER, 1, 0);
+       timer_generate_update(PACETIMER);
+     }
+     vas->vacs = VNA_ACQUIRE_RECORDED_STATE_WAITING;
+     vas->inittime = CPU_CYCLES;     
+     current_summed = 0;
+     number_to_sum = vas->wait_for_end ? 4 : vs->num_averages;
+   }
+   if (vas->vacs != VNA_ACQUIRE_RECORDED_STATE_WAITING)
+      return vas->vacs;
+   if (current_summed <= number_to_sum)
+   {
+      unsigned int curtime = CPU_CYCLES;
+      if (((unsigned int)(curtime - vas->inittime)) > vas->timeout)
+        vas->vacs = VNA_ACQUIRE_TIMEOUT;
+      return vas->vacs;
+   }
+   if (vas->wait_for_end)
+   {
+      vas->wait_for_end = false;
+      vas->vacs = VNA_ACQUIRE_RECORDED_STATE;
+      return vas->vacs;
+   }
+   if (vas->vado != NULL)
+   {
+     vna_acquire_dataset_state vads;
+     vads.n = vas->n;
+     vads.total = vs->nfreqs;
+     vads.freq = freq;
+     vads.volti = sampVOLTI;
+     vads.voltq = sampVOLTQ;
+     vads.curi = sampCURI;
+     vads.curq = sampCURQ;
+     vads.cur2i = sampCUR2I;
+     vads.cur2q = sampCUR2Q; 
+     vas->vado(&vads, vas->vado_v);
+   }
+   vas->n++;
+   if (vas->n >= vs->nfreqs)
+   {
+     vas->vacs = VNA_ACQUIRE_COMPLETE;
+     return vas->vacs;
+   }
+   if (vas->check_interruption)
+   {
+     if (console_inchar() == '!')
+     {
+       vas->vacs = VNA_ACQUIRE_ABORT;
+       return vas->vacs;
+     }
+#ifdef VNA_TOUCHSCREEN
+     if (touchscreen_enabled && touchscreen_abort())
+     {
+      vas->vacs = VNA_ACQUIRE_ABORT;
+      return vas->vacs;
+     }
+#endif 
+   }
+    vas->wait_for_end = true;
+    vas->vacs = VNA_ACQUIRE_RECORDED_STATE;
+    return vas->vacs;   
+}
+
+vna_acquire_current_state vna_setup_acquire_dataset(vna_acquire_state *vas, vna_acquisition_state *vs, vna_acquire_dataset_operation vado, void *v)
+{
+  number_to_sum = 0;
+  vas->vs = vs;
+  vas->wait_for_end = true;
+  vas->n = 0;
+  vas->vado = vado;
+  vas->vado_v = v;
+  vas->timeout = vs->timeout * (F_CPU / 1000u);
+  vas->freqstep = (vs->endfreq - vs->startfreq) / vs->nfreqs;
+  vas->vacs = VNA_ACQUIRE_RECORDED_STATE;
+  vas->check_interruption = true;
+  vna_initialize_si5351();
+  return vas->vacs;  
+}
+
 bool vna_acquire_dataset(vna_acquisition_state *vs, vna_acquire_dataset_operation vado, void *v)
 {
-  int n,c;
-  unsigned int freqstep;
-  vna_acquire_dataset_state vads;
+  vna_acquire_state vas;
 
-  vna_initialize_si5351();
-  freqstep = (vs->endfreq - vs->startfreq) / vs->nfreqs;
-  for (n = 0; n < vs->nfreqs; n++)
+  vna_setup_acquire_dataset(&vas, vs, vado, v);
+  do
   {
-    unsigned int freq = vs->startfreq + freqstep * n;
-    setup_frequency_acquire(freq);
-    if (n == 0)
-    {
-      if (acquire_sample(12, vs->timeout) < 0)
-        return false;
-    }
-    if (acquire_sample(vs->num_averages, vs->timeout) < 0)
-      return false;
-    vads.n = n;
-    vads.total = vs->nfreqs;
-    vads.freq = freq;
-    vads.volti = sampVOLTI;
-    vads.voltq = sampVOLTQ;
-    vads.curi = sampCURI;
-    vads.curq = sampCURQ;
-    vads.cur2i = sampCUR2I;
-    vads.cur2q = sampCUR2Q; 
-    vado(&vads, v);
-	  if (console_inchar() == '!')
-        return false;
-#ifdef VNA_TOUCHSCREEN
-    if (touchscreen_enabled && touchscreen_abort())
-       return false;
-#endif
-  }
-  return true;
+    vna_operation_acquire_dataset(&vas);
+  } while ((vas.vacs != VNA_ACQUIRE_TIMEOUT) && (vas.vacs != VNA_ACQUIRE_ABORT) && (vas.vacs != VNA_ACQUIRE_COMPLETE));
+  return (vas.vacs == VNA_ACQUIRE_COMPLETE);
 }
 
 int vna_set_averages(unsigned short averages, unsigned short timeout)
@@ -524,6 +493,44 @@ int shunt_cmd(int args, tinycl_parameter* tp, void *v)
   console_print("impedance-mode=");
   console_println(series_shunt_strings[vna_state.series_shunt_two]);
   return 1;
+}
+
+
+int vna_display_dataset_operation(vna_acquire_dataset_state *vads, void *va)
+{
+  if (vna_state.csv)
+  {
+    console_print(vads->freq);
+    console_print(",");
+    console_print(vads->volti);
+    console_print(",");
+    console_print(vads->voltq);
+    console_print(",");
+    console_print(vads->curi);
+    console_print(",");
+    console_print(vads->curq);
+    console_print(",");
+    console_print(vads->cur2i);
+    console_print(",");
+    console_println(vads->cur2q);
+  } else
+  {
+    console_print("Freq ");
+    console_print(vads->freq);
+    console_print(": Volt (");
+    console_print(vads->volti);
+    console_print(",");
+    console_print(vads->voltq);
+    console_print(") Cur1 (");
+    console_print(vads->curi);
+    console_print(",");
+    console_print(vads->curq);
+    console_print(") Cur2 (");
+    console_print(vads->cur2i);
+    console_print(",");
+    console_print(vads->cur2q);
+    console_println(")");
+  }
 }
 
 int doacq_cmd(int args, tinycl_parameter* tp, void *v)
@@ -1218,8 +1225,28 @@ int remote_1_cmd(int args, tinycl_parameter* tp, void *v)
   return 0;
 }
 
+
+#if 0
+#include "JogWheel.h"
+JogWheel jogwheel;
+bool jogwheel_init = false;
+
+int jogwheel_cmd(int args, tinycl_parameter* tp, void *v)
+{
+  char s[80];
+  if (!jogwheel_init)
+  {
+    jogwheel_init = true;
+    jogwheel.setup();
+  }
+  mini_snprintf(s,sizeof(s)-1,"Jog count %d total %d int %d pushed %d",jogwheel.readCounts(),jogwheel.totalCounts(),jogwheel.readInterrupts(),jogwheel.getSelect() ? 1 : 0);
+  console_println(s);
+}
+#endif
+
 const tinycl_command tcmds[] =
 {
+//  { "J", "Jogwheel=", jogwheel_cmd, TINYCL_PARM_END },
   { "CSV", "Set Comma Separated Values Mode", csv_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
   { "ATTEN", "Attenuator Setting", atten_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },
   { "DEBUG", "Debug Messages", debug_cmd, TINYCL_PARM_INT, TINYCL_PARM_END },

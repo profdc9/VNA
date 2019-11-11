@@ -31,6 +31,7 @@
 
 #include "Arduino.h"
 #include "Wire.h"
+#include "SoftWire.h"
 #include <stdint.h>
 
 /* Define definitions */

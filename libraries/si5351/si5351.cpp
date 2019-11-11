@@ -26,6 +26,7 @@
 
 #include "Arduino.h"
 #include "Wire.h"
+#include "SoftWire.h"
 #include "si5351.h"
 
 
@@ -60,15 +61,26 @@ Si5351::Si5351(uint8_t i2c_addr):
  * I2C address.
  *
  */
+
+#include "SoftWire.h"
+
+#define SI5351_SOFTWIRE
+
+#ifdef SI5351_SOFTWIRE
+SoftWire TWire(PB6,PB7);
+#else
+#define TWire Wire
+#endif
+ 
 bool Si5351::init(uint8_t xtal_load_c, uint32_t xo_freq, int32_t corr)
 {
 	// Start I2C comms
-	Wire.begin();
+	TWire.begin();
 	
 	// Check for a device on the bus, bail out if it is not there
-	Wire.beginTransmission(i2c_bus_addr);
+	TWire.beginTransmission(i2c_bus_addr);
 	uint8_t reg_val;
-  reg_val = Wire.endTransmission();
+  reg_val = TWire.endTransmission();
 
 	if(reg_val == 0)
 	{
@@ -1308,37 +1320,37 @@ void Si5351::set_ref_freq(uint32_t ref_freq, enum si5351_pll_input ref_osc)
 
 uint8_t Si5351::si5351_write_bulk(uint8_t addr, uint8_t bytes, uint8_t *data)
 {
-	Wire.beginTransmission(i2c_bus_addr);
-	Wire.write(addr);
+	TWire.beginTransmission(i2c_bus_addr);
+	TWire.write(addr);
 	for(int i = 0; i < bytes; i++)
 	{
-		Wire.write(data[i]);
+		TWire.write(data[i]);
 	}
-	return Wire.endTransmission();
+	return TWire.endTransmission();
 
 }
 
 uint8_t Si5351::si5351_write(uint8_t addr, uint8_t data)
 {
-	Wire.beginTransmission(i2c_bus_addr);
-	Wire.write(addr);
-	Wire.write(data);
-	return Wire.endTransmission();
+	TWire.beginTransmission(i2c_bus_addr);
+	TWire.write(addr);
+	TWire.write(data);
+	return TWire.endTransmission();
 }
 
 uint8_t Si5351::si5351_read(uint8_t addr)
 {
 	uint8_t reg_val = 0;
 
-	Wire.beginTransmission(i2c_bus_addr);
-	Wire.write(addr);
-	Wire.endTransmission();
+	TWire.beginTransmission(i2c_bus_addr);
+	TWire.write(addr);
+	TWire.endTransmission();
 
-	Wire.requestFrom(i2c_bus_addr, (uint8_t)1);
+	TWire.requestFrom(i2c_bus_addr, (uint8_t)1);
 
-	while(Wire.available())
+	while(TWire.available())
 	{
-		reg_val = Wire.read();
+		reg_val = TWire.read();
 	}
 
 	return reg_val;

@@ -48,6 +48,7 @@ typedef struct _touchscreen_button_panel_entry
 } touchscreen_button_panel_entry;
 
 #define TOUCHSCREEN_FIXEDPOINT_OFFSET 65536
+#define TOUCHSCREEN_SELECT_COLOR 0xF03F
 
 typedef struct _touchscreen_calibration
 {
@@ -60,7 +61,7 @@ bool touchscreen_solid_press(int16_t &x, int16_t &y, int16_t &z, bool applycal=t
 bool touchscreen_solid_release(int16_t ms=150);
 void touchscreen_draw_button_panel(Adafruit_GFX *gfx, int n_entries, const touchscreen_button_panel_entry *tbpe);
 int16_t touchscreen_get_button_press(Adafruit_GFX *gfx, int n_entries, const touchscreen_button_panel_entry *tbpe, void *v=NULL);
-void touchscreen_draw_button(Adafruit_GFX *gfx, const touchscreen_button_panel_entry *t, bool inverted=false);
+void touchscreen_draw_button(Adafruit_GFX *gfx, const touchscreen_button_panel_entry *t, int disptype=0);
 void touchscreen_calibrate(void);
 
 void touchscreen_display_block(int16_t x, int16_t y, const char *c, int16_t textsize, bool center);
