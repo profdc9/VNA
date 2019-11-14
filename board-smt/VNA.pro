@@ -1,4 +1,4 @@
-update=11/13/2019 10:19:23 AM
+update=11/13/2019 10:46:13 PM
 version=1
 last_client=kicad
 [pcbnew]
@@ -65,6 +65,7 @@ LibName33=bluepill
 LibName34=sa612
 LibName35=si5351a
 LibName36=AMS1117-3V3
+LibName37=mt3608
 [schematic_editor]
 version=1
 PageLayoutDescrFile=
