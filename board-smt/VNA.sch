@@ -2368,17 +2368,6 @@ Wire Wire Line
 	4900 1050 4900 1000
 Wire Wire Line
 	4800 800  5050 800 
-$Comp
-L Ferrite_Bead_Small L9
-U 1 1 5DCD25CB
-P 5150 800
-F 0 "L9" H 5225 850 50  0000 L CNN
-F 1 "Ferrite_Bead_Small" H 5225 750 50  0000 L CNN
-F 2 "Inductors_SMD:L_1206_HandSoldering" V 5080 800 50  0001 C CNN
-F 3 "" H 5150 800 50  0001 C CNN
-	1    5150 800 
-	0    1    1    0   
-$EndComp
 Connection ~ 4900 800 
 $Comp
 L R R52
@@ -2404,4 +2393,15 @@ Wire Wire Line
 Wire Wire Line
 	6000 1400 6000 1350
 Connection ~ 5850 1550
+$Comp
+L L_Small L9
+U 1 1 5DCCE487
+P 5150 800
+F 0 "L9" H 5180 840 50  0000 L CNN
+F 1 "100 uH" H 5180 760 50  0000 L CNN
+F 2 "Inductors_SMD:L_1206_HandSoldering" H 5150 800 50  0001 C CNN
+F 3 "" H 5150 800 50  0001 C CNN
+	1    5150 800 
+	0    -1   -1   0   
+$EndComp
 $EndSCHEMATC
