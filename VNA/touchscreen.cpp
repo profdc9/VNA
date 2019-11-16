@@ -24,6 +24,7 @@
 #include "debugmsg.h"
 #include "mini-printf.h"
 
+#define TOUCHSCREEN_NOTOUCH
 #define TOUCHSCREEN_JOGWHEEL
 
 #ifdef TOUCHSCREEN_JOGWHEEL
@@ -83,6 +84,7 @@ void touchscreen_draw_button_panel(Adafruit_GFX *gfx, int n_entries, const touch
 
 bool touchscreen_solid_release(int16_t ms)
 {
+#ifndef TOUCHSCREEN_NOTOUCH
   int n;
   ms = ms / 25;
   ms = (ms < 1) ? 1 : ms;
@@ -97,10 +99,14 @@ bool touchscreen_solid_release(int16_t ms)
   }
   touchscreen_spi_reset();
   return false;
+#else
+  return false;
+#endif
 }
 
 bool touchscreen_solid_press(int16_t &x, int16_t &y, int16_t &z, bool applycal, int16_t ms )
 {
+#ifndef TOUCHSCREEN_NOTOUCH
   int px = 0, py = 0, pz = 0;
   ms = (ms < 1) ? 1 : ms;
   for (int n = 0; n < ms; n++)
@@ -132,6 +138,9 @@ bool touchscreen_solid_press(int16_t &x, int16_t &y, int16_t &z, bool applycal, 
     y = yd / TOUCHSCREEN_FIXEDPOINT_OFFSET;
   }
   return true;
+#else
+  return false;
+#endif
 }
 
 bool touchscreen_abort_enable = true;
@@ -647,6 +656,7 @@ void touchscreen_marker_line(int16_t x)
   for (int16_t y = 0; y < h; y += 4)
   {
     uint16_t pixval = tft.readPixel(x, y);
+    touchscreen_spi_reset();
     tft.drawPixel(x, y, pixval ^ (((uint16_t)0xFC) << 3));
   }
 }
@@ -1320,9 +1330,9 @@ int touchscreen_averages(int code, void *v)
 {
   unsigned int averages;
   bool entered;
-  entered = touchscreen_enter_number("Averages", "1 to 5000", averages);
+  entered = touchscreen_enter_number("Averages", "1 to 50000", averages);
   if (!entered) return 0;
-  if ((averages < 1) || (averages > 5000))
+  if ((averages < 1) || (averages > 50000))
   {
     touchscreen_display_message("Invalid number\nof averages");
     touchscreen_wait();
@@ -1408,7 +1418,7 @@ const touchscreen_button_panel_entry settingspanel[] =
   { 700, 80, 120,  4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Atten", 2, touchscreen_atten },
   { 800, 160, 120,  4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Series/Shunt", 2, touchscreen_series },
   { 900, 0, 160,  4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Serial Rem", 2, touchscreen_remote },
-  { 1000, 160, 160,  4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Cal Freq ", 2, touchscreen_calfreqs },
+  { 1000, 160, 160,  4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Cal Freq", 2, touchscreen_calfreqs },
   { 0, 0, 200, 4, 0, 36, 0xFFFF, 0x0000, 0xFFFF, "Return to Main Menu", 2, NULL },
 };
 
@@ -1485,6 +1495,7 @@ void touchscreen_task(void)
 
 void touchscreen_calibrate(void)
 {
+#ifndef TOUCHSCREEN_NOTOUCH
   Adafruit_GFX *gfx = &tft;
   int64_t xd[3], yd[3], x[3], y[3];
   int n;
@@ -1531,6 +1542,7 @@ void touchscreen_calibrate(void)
   tcal.e = (((int64_t)tcal.e) * ((int64_t)TOUCHSCREEN_FIXEDPOINT_OFFSET)) / tcal.k;
   tcal.f = ((int64_t)yd[0]) * (x[1] * y[2] - x[2] * y[1]) - ((int64_t)yd[1]) * (x[0] * y[2] - x[2] * y[0]) + ((int64_t)yd[2]) * (x[0] * y[1] - x[1] * y[0]);
   tcal.f = (((int64_t)tcal.f) * ((int64_t)TOUCHSCREEN_FIXEDPOINT_OFFSET)) / tcal.k;
+#endif
   tcal.iscal = true;
 }
 
@@ -1539,8 +1551,13 @@ void touchscreen_setup() {
   jogwheel.setup();
 #endif
   SPI.begin(); //Initialize the SPI_1 port.
-  touchscreen_spi_reset();
-  tft.begin(SPI, 18000000ul);
+#ifndef TOUCHSCREEN_NOTOUCH
   ts.begin();
+  touchscreen_spi_reset();
+#else
+  pinMode(XPT2046_CS,OUTPUT);
+  digitalWrite(XPT2046_CS,HIGH);
+#endif
+  tft.begin(SPI, 18000000ul);
   tft.setRotation(1);
 }
