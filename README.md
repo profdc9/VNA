@@ -6,7 +6,7 @@ https://www.arduino.cc/en/Main/Software
 
 The stm32duino software can be installed using the instructions on the stm32duino web site
 
-http://wiki.stm32duino.com/index.php?title=Installation
+https://github.com/rogerclarkmelbourne/Arduino_STM32/wiki/Installation
 
 which involves (at this time) downloading the git archive for the stm32duino and placing it under the "hardware" folder in your Arduino folder.
 
@@ -16,24 +16,4 @@ There are several Arduino libraries that are required for the SI5351A frequency 
 
 The VNA may be used with or without a touchscreen.  If a touchscreen it used, it should be compiled with the "VNA_TOUCHSCREEN" defined in VNA.h.  If you do not have a touchscreen, you can ground the pin PB13 and it will start up without a touchscreen, only appearing a USB CDC serial port device.  You can then type "HELP" to see the list of commands.
 
-The touchscreen used is a 2.8" touchscreen with a SPI interface to the ILI9341 and XPT2046.  These are commonly available at a low price.  To connect it to the SPI interface connector header "J1" on the board, use the following pin connections.  I modified Dupont wire jumpers to provide these connections, creating "Y" connectors with these jumpers to join the power and SPI bus lines together.  If a 2.8" size display is used, there are four holes on the PCB, J8, J10, J11, and J12 that may be used to mount the display to the PCB with standoffs, as many displays have this particular mounting hole pattern.
-
-
-1 GND J1  - GND TFT
-
-2 SCK J1  - ILI9341 SCK,  XPT2046 T_CLK
-
-3 MISO J1 - ILI9341 SDO(MISO),  XPT2046 T_OUT
-
-4 MOSI J1 - ILI9341 SDI(MOSI),  XPT2046 T_IN
-
-5 CS1 J1  - ILI9341 CS
-
-6 CS2 J1  - XPT2046 T_CS
-
-7 CS3 J1  - ILI9341 D/C
-
-8 +5V J1  - VCC TFT, LED TFT, RESET TFT through 100k pull-up resistor
-
-
-The only pin on the TFT display that is not used is T_IRQ.
+The touchscreen used is a 2.8" touchscreen with a SPI interface to the ILI9341 and XPT2046.  These are commonly available at a low price.  To connect it to the SPI interface connector header "J1" on the board, use a 14 pin IDC ribbon cable.
