@@ -34,8 +34,8 @@
 /* Public functions */
 /********************/
 
-Si5351::Si5351(uint8_t i2c_addr):
-	i2c_bus_addr(i2c_addr)
+Si5351::Si5351(uint8_t i2c_addr, uint8_t which_si5351):
+	i2c_bus_addr(i2c_addr), which_i2c_si5351(which_si5351)
 {
 	xtal_freq[0] = SI5351_XTAL_FREQ;
 
@@ -62,18 +62,18 @@ Si5351::Si5351(uint8_t i2c_addr):
  *
  */
 
-#include "SoftWire.h"
-
-#define SI5351_SOFTWIRE
 
 #ifdef SI5351_SOFTWIRE
-SoftWire TWire(PB6,PB7);
+SoftWire TWire1(PB6,PB7);
+SoftWire TWire2(PA4,PA5);
+#define TWire (*TWirePtr)
 #else
 #define TWire Wire
 #endif
  
 bool Si5351::init(uint8_t xtal_load_c, uint32_t xo_freq, int32_t corr)
 {
+    TWirePtr = which_i2c_si5351 ? &TWire2 : &TWire1;
 	// Start I2C comms
 	TWire.begin();
 	

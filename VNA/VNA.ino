@@ -56,7 +56,8 @@ bool touchscreen_enabled;
 #define PACETIMER TIMER2
 #define PACETIMER_NVIC NVIC_TIMER2
 
-Si5351 si5351;
+Si5351 si5351(SI5351_BUS_BASE_ADDR,0);
+Si5351 si5351b(SI5351_BUS_BASE_ADDR,1);
 
 int pinMapADCCURPINin;
 int pinMapADCVOLTPINin;
@@ -105,6 +106,12 @@ unsigned short analogReadPins(void)
 
   while (!(ADC1->regs->SR & ADC_SR_EOC));
   sampCUR2 = (ADC1->regs->DR & ADC_DR_DATA);
+}
+
+void setup_port2_pins(void)
+{
+  pinMode(PA4, OUTPUT_OPEN_DRAIN);
+  pinMode(PA5, OUTPUT_OPEN_DRAIN);
 }
 
 void setup_pins(void)
@@ -275,22 +282,64 @@ int setup_frequency_acquire(unsigned int frequency)
 
   rcc_clk_enable(RCC_I2C1);
   si5351.output_enable(SI5351_CLK0, 0);
+#ifdef SI5351_SINGLE
   si5351.output_enable(SI5351_CLK1, 0);
+#else
+  setup_port2_pins();
+  si5351b.output_enable(SI5351_CLK0, 0);
+#endif
   if (frequency < VNA_FREQ_3X)
   {
     si5351.set_freq(frequency * SI5351_FREQ_MULT, SI5351_CLK0);
+#ifdef SI5351_SINGLE
     si5351.set_freq((frequency + VNA_NOMINAL_1X_IF_FREQ) * SI5351_FREQ_MULT, SI5351_CLK1);
+#else
+    setup_port2_pins();
+    si5351b.set_freq((frequency + VNA_NOMINAL_1X_IF_FREQ) * SI5351_FREQ_MULT, SI5351_CLK0);
+#endif
     numphases = 4;
-  } else
+  } else if (frequency < VNA_FREQ_5X)
   {
     frequency = frequency / 3;
     si5351.set_freq(frequency * SI5351_FREQ_MULT, SI5351_CLK0);
+#ifdef SI5351_SINGLE
     si5351.set_freq((frequency + VNA_NOMINAL_3X_IF_FREQ) * SI5351_FREQ_MULT, SI5351_CLK1);
+#else
+    setup_port2_pins();
+    si5351b.set_freq((frequency + VNA_NOMINAL_3X_IF_FREQ) * SI5351_FREQ_MULT, SI5351_CLK0);
+#endif
     numphases = 12;
-  }
+  } else if (frequency < VNA_FREQ_7X)
+  {
+    frequency = frequency / 5;
+    si5351.set_freq(frequency * SI5351_FREQ_MULT, SI5351_CLK0);
+#ifdef SI5351_SINGLE
+    si5351.set_freq((frequency + VNA_NOMINAL_5X_IF_FREQ) * SI5351_FREQ_MULT, SI5351_CLK1);
+#else
+    setup_port2_pins();
+    si5351b.set_freq((frequency + VNA_NOMINAL_5X_IF_FREQ) * SI5351_FREQ_MULT, SI5351_CLK0);
+#endif
+    numphases = 20;
+  } else 
+  {
+    frequency = frequency / 7;
+    si5351.set_freq(frequency * SI5351_FREQ_MULT, SI5351_CLK0);
+#ifdef SI5351_SINGLE
+    si5351.set_freq((frequency + VNA_NOMINAL_7X_IF_FREQ) * SI5351_FREQ_MULT, SI5351_CLK1);
+#else
+   setup_port2_pins();
+   si5351b.set_freq((frequency + VNA_NOMINAL_7X_IF_FREQ) * SI5351_FREQ_MULT, SI5351_CLK0);
+#endif
+    numphases = 28;
+  }  
   delay(2);
   si5351.output_enable(SI5351_CLK0, 1);
+#ifdef SI5351_SINGLE
   si5351.output_enable(SI5351_CLK1, 1);
+#else
+  setup_port2_pins();
+  si5351b.output_enable(SI5351_CLK0, 1);
+#endif
   rcc_clk_disable(RCC_I2C1);
   digitalWrite(ATTEN_PIN, vna_state.atten ? HIGH : LOW);
   return 0;
@@ -299,15 +348,25 @@ int setup_frequency_acquire(unsigned int frequency)
 void vna_initialize_si5351()
 {
   rcc_clk_enable(RCC_I2C1);
+#ifdef SI5351_SINGLE
   si5351.init(SI5351_CRYSTAL_LOAD_8PF, 27000000u, 0);
   si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_6MA);
   si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_6MA);
   si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
   si5351.set_ms_source(SI5351_CLK1, SI5351_PLLB);
-  //si5351.set_freq(10000000ull * SI5351_FREQ_MULT, SI5351_CLK0);
-  //si5351.set_freq(10010000ull * SI5351_FREQ_MULT, SI5351_CLK1);
-  //si5351.output_enable(SI5351_CLK0, 1);
-  //si5351.output_enable(SI5351_CLK1, 1);
+#else
+  si5351.init(SI5351_CRYSTAL_LOAD_8PF, 27000000u, 0);
+  si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_6MA);
+  si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_6MA);
+  si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
+  si5351.set_ms_source(SI5351_CLK1, SI5351_PLLB);
+  si5351.set_ms_source(SI5351_CLK2, SI5351_PLLB);
+  si5351.set_freq(27000000ull * SI5351_FREQ_MULT, SI5351_CLK2);
+  setup_port2_pins();
+  si5351b.init(SI5351_CRYSTAL_LOAD_8PF, 27000000u, 0);
+  si5351b.drive_strength(SI5351_CLK0, SI5351_DRIVE_6MA);
+  si5351b.set_ms_source(SI5351_CLK0, SI5351_PLLA);
+#endif
   rcc_clk_disable(RCC_I2C1);
 }
 
@@ -665,7 +724,6 @@ int vna_short_dataset_operation(vna_acquire_dataset_state *vads, void *va)
 {
   vna_calib_oneport *v1pt = (vna_calib_oneport *)va;
   v1pt[vads->n].zs = Complex((float)vads->volti, (float)vads->voltq) / Complex((float)vads->curi, (float)vads->curq);
-  vna_calib[vads->n].s2 = Complex((float)vads->cur2i, (float)vads->cur2q) / ((float) vna_state.num_averages);
   if (debugmsg_state)
   {
     char s[80];
@@ -678,6 +736,7 @@ int vna_load_dataset_operation(vna_acquire_dataset_state *vads, void *va)
 {
   vna_calib_oneport *v1pt = (vna_calib_oneport *)va;
   v1pt[vads->n].zt = Complex((float)vads->volti, (float)vads->voltq) / Complex((float)vads->curi, (float)vads->curq);
+  vna_calib[vads->n].s2 = Complex((float)vads->cur2i, (float)vads->cur2q) / ((float) vna_state.num_averages);
   if (debugmsg_state)
   {
     char s[80];
@@ -1242,6 +1301,7 @@ int remote_1_cmd(int args, tinycl_parameter* tp, void *v)
   return 0;
 }
 
+#define VNA_NOISE_MEASURE
 #ifdef VNA_NOISE_MEASURE
 int noise_cmd(int args, tinycl_parameter* tp, void *v)
 {
@@ -1281,10 +1341,10 @@ int noise_cmd(int args, tinycl_parameter* tp, void *v)
   console_println(s);
   total2VOLT = sqrtf(total2VOLT);
   total2CUR = sqrtf(total2CUR);
-  total2CUR2 = sqrtf(total2CUR);
+  total2CUR2 = sqrtf(total2CUR2);
   mini_snprintf(s,sizeof(s)-1,"STD %03f %03f %03f",float2int32(total2VOLT),float2int32(total2CUR),float2int32(total2CUR2));
   console_println(s);
-  return 0;  
+  return 1;  
 }
 #endif
 
@@ -1303,9 +1363,9 @@ int jogwheel_cmd(int args, tinycl_parameter* tp, void *v)
   }
   mini_snprintf(s, sizeof(s) - 1, "Jog count %d total %d int %d pushed %d", jogwheel.readCounts(), jogwheel.totalCounts(), jogwheel.readInterrupts(), jogwheel.getSelect() ? 1 : 0);
   console_println(s);
+  return 1;
 }
 #endif
-
 
 const tinycl_command tcmds[] =
 {

@@ -24,7 +24,7 @@
 #include "debugmsg.h"
 #include "mini-printf.h"
 
-#define TOUCHSCREEN_NOTOUCH
+//#define TOUCHSCREEN_NOTOUCH
 #define TOUCHSCREEN_JOGWHEEL
 
 #ifdef TOUCHSCREEN_JOGWHEEL

@@ -1,7 +1,7 @@
 #ifndef _JOGWHEEL_H
 #define _JOGWHEEL_H
 /*
-    Limited complex number class
+    Jog Wheel Class
 */
 
 /*

@@ -34,6 +34,8 @@
 #include "SoftWire.h"
 #include <stdint.h>
 
+#define SI5351_SOFTWIRE
+
 /* Define definitions */
 
 #define SI5351_BUS_BASE_ADDR            0x60
@@ -280,7 +282,7 @@ struct Si5351IntStatus
 class Si5351
 {
 public:
-  Si5351(uint8_t i2c_addr = SI5351_BUS_BASE_ADDR);
+  Si5351(uint8_t i2c_addr = SI5351_BUS_BASE_ADDR, uint8_t which_si5351 = 0);
 	bool init(uint8_t, uint32_t, int32_t);
 	void reset(void);
 	uint8_t set_freq(uint64_t, enum si5351_clock);
@@ -330,7 +332,11 @@ private:
 	int32_t ref_correction[2];
   uint8_t clkin_div;
   uint8_t i2c_bus_addr;
+  uint8_t which_i2c_si5351;
   bool clk_first_set[8];
+#ifdef SI5351_SOFTWIRE
+  SoftWire *TWirePtr;
+#endif
 };
 
 #endif /* SI5351_H_ */

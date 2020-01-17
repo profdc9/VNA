@@ -1,4 +1,4 @@
-/* Complex number class */
+/* Jog wheel class */
 
 /*
  * Copyright (c) 2018 Daniel Marks
