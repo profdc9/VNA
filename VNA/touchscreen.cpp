@@ -564,7 +564,7 @@ int touchscreen_recal(int code, void *v)
   return 0;
 }
 
-#define TOUCHSCREEN_SMITH_RADIUS 0.45f
+#define TOUCHSCREEN_SMITH_RADIUS 0.48f
 #define TOUCHSCREEN_BOTTOM_LINES 24
 
 typedef struct _touchscreen_axes_parameters
@@ -650,15 +650,58 @@ void touchscreen_set_axis_data(int n, int total, const Complex &c)
     taps.axis_data_acquire[n] = c;
 }
 
-void touchscreen_marker_line(int16_t x)
+void touchscreen_get_coor_axis_1(int16_t &x, int16_t &y, int n, int total, touchscreen_axes_parameters *t, Complex *axis_data);
+
+#define MARKER_CROSS 7
+
+void touchscreen_invert_pixel(int16_t x, int16_t y)
 {
-  int16_t h = tft.height() - TOUCHSCREEN_BOTTOM_LINES;
-  for (int16_t y = 0; y < h; y += 4)
-  {
     uint16_t pixval = tft.readPixel(x, y);
     touchscreen_spi_reset();
-    tft.drawPixel(x, y, pixval ^ (((uint16_t)0xFC) << 3));
+    tft.drawPixel(x, y, pixval ^ (((uint16_t)0xFC) << 3));  
+}
+
+void touchscreen_correct_xy(int16_t &x, int16_t &y, touchscreen_axes_parameters *t)
+{
+  if (x < 0) x = 0;
+  if (x >= t->w) x = t->w - 1; 
+  if (y < 0) y = 0;
+  if (y >= t->h) y = t->h - 1; 
+}
+
+void touchscreen_marker_line(void)
+{
+  int16_t w = tft.width();
+  int16_t h = tft.height() - TOUCHSCREEN_BOTTOM_LINES;
+  if (taps.polar)
+  {
+    int16_t x, y, mn, mx;
+    touchscreen_get_coor_axis_1(x, y, taps.current_selected, taps.num_axis_data, &taps, taps.axis_data_acquire);
+    mn = x - MARKER_CROSS;
+    mn = mn < 0 ? 0 : mn;
+    mx = x + MARKER_CROSS;
+    mx = mx >= w ? w : mx;
+    for (int16_t xx = mn; xx < mx; xx += 2)
+      touchscreen_invert_pixel(xx, y);
+    mn = y - MARKER_CROSS;
+    mn = mn < 0 ? 0 : mn;
+    mx = y + MARKER_CROSS;
+    mx = mx >= h ? h : mx;
+    for (int16_t yy = mn; yy < mx; yy += 2)
+      touchscreen_invert_pixel(x, yy);      
+    return;
   }
+  int16_t x = taps.current_selected * ((int)w) / ((int)taps.num_axis_data);
+  for (int16_t y = 0; y < h; y += 4)
+    touchscreen_invert_pixel(x, y);
+}
+
+Complex touchscreen_rec2polar(Complex x)
+{
+  Complex y;
+  y.real = (10.0f / logf(10.0f)) * logf(x.absq());
+  y.imag = RAD2DEG(x.arg());
+  return y;
 }
 
 bool touchscreen_get_touch_axis(bool axis_buffer, bool redobottom)
@@ -687,15 +730,13 @@ bool touchscreen_get_touch_axis(bool axis_buffer, bool redobottom)
   
   int16_t h = tft.height() - TOUCHSCREEN_BOTTOM_LINES;
   int16_t w = tft.width();
-  int16_t col;
   char s[80];
 
   if (!redobottom)
   {
     if (taps.current_selected >= 0)
     {
-      col = taps.current_selected * ((int)w) / ((int)taps.num_axis_data);
-      if (taps.erase_marker) touchscreen_marker_line(col);
+      if (taps.erase_marker) touchscreen_marker_line();
 #ifdef TOUCHSCREEN_JOGWHEEL
       taps.current_selected += jogwheel_count;
 #endif
@@ -710,8 +751,7 @@ bool touchscreen_get_touch_axis(bool axis_buffer, bool redobottom)
     else
       taps.current_selected = taps.num_axis_data / 2;
   }
-  col = taps.current_selected * ((int)w) / ((int)taps.num_axis_data);
-  touchscreen_marker_line(col);
+  touchscreen_marker_line();
   taps.erase_marker = true;
   
   tft.fillRect(0, h, tft.width(), TOUCHSCREEN_BOTTOM_LINES, ILI9341_BLACK);
@@ -719,7 +759,9 @@ bool touchscreen_get_touch_axis(bool axis_buffer, bool redobottom)
   tft.setTextColor(ILI9341_WHITE);
   float xaxis = ((taps.maxx - taps.minx) * taps.current_selected) / ((float)taps.num_axis_data) + taps.minx;
   tft.setCursor(0, h + 8);
-  mini_snprintf(s, sizeof(s) - 1, taps.format_string, float2int32(xaxis), float2int32(axis_data[taps.current_selected].real), float2int32(axis_data[taps.current_selected].imag));
+  Complex temp = axis_data[taps.current_selected];
+  temp = taps.polar ? touchscreen_rec2polar(temp) : temp;
+  mini_snprintf(s, sizeof(s) - 1, taps.format_string, float2int32(xaxis), float2int32(temp.real), float2int32(temp.imag));
   tft.print(s);
   tft.setCursor(250, h + 8);
   tft.print("Tap Escape");
@@ -738,7 +780,7 @@ int touchscreen_draw_smith_chart(Adafruit_GFX *gfx, touchscreen_axes_parameters 
   int h2, w2;
 
   t->w = gfx->width();
-  t->h = gfx->height();
+  t->h = gfx->height() - TOUCHSCREEN_BOTTOM_LINES;
   w2 = t->w / 2;
   h2 = t->h / 2;
 
@@ -764,6 +806,7 @@ int touchscreen_draw_smith_chart(Adafruit_GFX *gfx, touchscreen_axes_parameters 
     gfx->drawCircle(t->w / 2, t->h / 2, k, ILI9341_BLACK);
     gfx->drawCircle(t->w / 2 - 1, t->h / 2, k, ILI9341_BLACK);
   }
+#if 0
   gfx->setTextSize(1);
   gfx->setTextColor(ILI9341_BLUE);
   gfx->setCursor(0, 0);
@@ -777,6 +820,7 @@ int touchscreen_draw_smith_chart(Adafruit_GFX *gfx, touchscreen_axes_parameters 
   gfx->setCursor(0, 30);
   mini_ftoa(t->maxx, 0, s, sizeof(s) - 1);
   gfx->print(s);
+#endif
 }
 
 int touchscreen_draw_axes(Adafruit_GFX *gfx, touchscreen_axes_parameters *t)
@@ -851,18 +895,6 @@ int touchscreen_smith(int code, void *v)
   touchscreen_wait();
 }
 
-void touchscreen_correct_x(int16_t &x, touchscreen_axes_parameters *t)
-{
-  if (x < 0) x = 0;
-  if (x >= t->w) x = t->w - 1; 
-}
-
-void touchscreen_correct_y(int16_t &y, touchscreen_axes_parameters *t)
-{
-  if (y < 0) y = 0;
-  if (y >= t->h) y = t->h - 1; 
-}
-
 void touchscreen_get_coor_axis_1(int16_t &x, int16_t &y, int n, int total, touchscreen_axes_parameters *t, Complex *axis_data)
 { 
   if (t->polar)
@@ -874,16 +906,14 @@ void touchscreen_get_coor_axis_1(int16_t &x, int16_t &y, int n, int total, touch
     x = (n * (int)t->w) / total;
     y = (t->maxy1 - axis_data[n].real) * t->slopey1;
   }
-  touchscreen_correct_x(x, t);
-  touchscreen_correct_y(y, t);
+  touchscreen_correct_xy(x, y, t);
 }
 
 void touchscreen_get_coor_axis_2(int16_t &x, int16_t &y, int n, int total, touchscreen_axes_parameters *t, Complex *axis_data)
 { 
   x = (n * (int)t->w) / total;
-  touchscreen_correct_x(x, t);
   y = (t->maxy2 - axis_data[n].imag) * t->slopey2;
-  touchscreen_correct_y(y, t);
+  touchscreen_correct_xy(x, y, t);
 }
 
 void touchscreen_draw_axes_part(int total, int n1, int n2, bool axis_buffer)
@@ -899,12 +929,14 @@ void touchscreen_draw_axes_part(int total, int n1, int n2, bool axis_buffer)
     int16_t x1, y1, x2, y2;
     touchscreen_get_coor_axis_1(x1, y1, n-1, total, t, axis_data);
     touchscreen_get_coor_axis_1(x2, y2, n, total, t, axis_data);
+#if 0
     if (t->polar)
     {
       uint16_t line1_color = (n * 31) / total;
       line1_color = (line1_color << 11) | (31 - line1_color);
       tft.writeLine(x1,y1,x2,y2,line1_color);
     } else
+#endif
     {
       tft.writeLine(x1,y1,x2,y2,ILI9341_RED);
       if (t->twotrace)
@@ -1088,16 +1120,8 @@ int touchscreen_zacq(int code, void *v)
 int touchscreen_rtr_sparm_display(int n, int total, unsigned int freq, bool ch2, Complex s11, Complex s21)
 {
   touchscreen_axes_parameters *t = &taps;
-  if (touchscreen_smith_chart)
-  {
-    touchscreen_set_axis_data(n, total, t->port == 1 ? s11 : s21);
-  } else
-  {
-    if (t->port == 2) s11 = s21;
-    float s11db = (10.0f / logf(10.0f)) * logf(s11.absq());
-    float s11deg = RAD2DEG(s11.arg());
-    touchscreen_set_axis_data(n, total, Complex(s11db, s11deg));
-  }
+  Complex x = t->port == 1 ? s11 : s21;
+  touchscreen_set_axis_data(n, total, touchscreen_smith_chart ? x :  touchscreen_rec2polar(x));
   if (!t->sweeping) touchscreen_draw_axes_part(total, n, n+1, false);
 }
 
@@ -1125,7 +1149,7 @@ int touchscreen_sparm(int code, void *v)
   taps.maxy2 = 180.0f;
   taps.axislabel2 = "Phase";
   touchscreen_allocate_axis_data("%f: %03f dB %03f degs", touchscreen_smith_chart, !touchscreen_smith_chart);
-
+  if (taps.polar) taps.sweeping = false;
   touchscreen_abort_enable = true;
   if (taps.sweeping)
      touchscreen_display_acquiring();
@@ -1160,8 +1184,7 @@ int touchscreen_sparm(int code, void *v)
       touchscreen_sparm_background(&taps);
       touchscreen_draw_axes_all(taps.num_axis_data,true);
       touchscreen_get_touch_axis(true,true);
-    }
-    if ((!taps.sweeping) || (touchscreen_smith_chart))  
+    } else
     {
       touchscreen_touch_axis(false);
       return touchscreen_acquire_cleanup();
@@ -1256,6 +1279,7 @@ int touchscreen_spot(int code, void *v)
     tft.setCursor(0,72);
     tft.print(s);
   
+    tft.setTextSize(1);
     float rl = (10.0f / logf(10.0f)) * logf(sparms[0].absq());
     float Q = fabsf(z.imag)/fabsf(z.real);
     float Rp = z.absq()/z.real;
@@ -1270,9 +1294,8 @@ int touchscreen_spot(int code, void *v)
     float Lp = Xp/w*1.0E6f;
     float Cp = -1.0e12f/(Xp*w);
   
-    tft.setTextSize(1);
     mini_snprintf(s,sizeof(s)-1,"Ls %03f uH Cs %03f pF\nLp %03f uH Cp %03f pF",float2int32(Ls), float2int32(Cs), float2int32(Lp), float2int32(Cp));
-    tft.setCursor(0,136);
+    tft.setCursor(0,120);
     tft.print(s);
     attempts = 0;
     while (attempts < 500)

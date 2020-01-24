@@ -64,7 +64,7 @@ int pinMapADCVOLTPINin;
 int pinMapADCCUR2PINin;
 
 const vna_flash_header flash_header = { 0xDEADBEEF, 0xC001ACE5 };
-vna_acquisition_state vna_state = {3000000u, 30000000u, 3000000u, 30000000u, 50u, 64, 1000, VNA_MAX_CAL_FREQS, VNA_MAX_ACQ_FREQS, 0, 0, 0, 0, VNA_NO_CALIB };
+vna_acquisition_state vna_state = {1000000u, 30000000u, 1000000u, 30000000u, 50u, 64, 1000, VNA_MAX_CAL_FREQS, VNA_MAX_ACQ_FREQS, 0, 0, 0, 0, VNA_NO_CALIB };
 vna_calib_oneport *vna_1pt = NULL;
 vna_calib_freq_parm vna_calib[VNA_MAX_CAL_FREQS];
 
@@ -224,7 +224,7 @@ void timerContInterrupt(void)
 void setup_if_clock(void)
 {
   nvic_irq_set_priority(NVIC_EXTI_15_10, 2);
-  attachInterrupt(IFCLOCK_PIN, ifClockInterrupt, RISING);
+  attachInterrupt(IFCLOCK_PIN, ifClockInterrupt, FALLING);
 
   nvic_irq_set_priority(PACETIMER_NVIC, 2);
   timer_init(PACETIMER);
