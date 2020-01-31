@@ -2057,17 +2057,6 @@ F 3 "" H 5150 7200 50  0001 C CNN
 	1    5150 7200
 	1    0    0    -1  
 $EndComp
-$Comp
-L +5V #PWR070
-U 1 1 5E1CFC8D
-P 10200 5400
-F 0 "#PWR070" H 10200 5250 50  0001 C CNN
-F 1 "+5V" H 10200 5540 50  0000 C CNN
-F 2 "" H 10200 5400 50  0001 C CNN
-F 3 "" H 10200 5400 50  0001 C CNN
-	1    10200 5400
-	1    0    0    -1  
-$EndComp
 NoConn ~ 10350 4350
 Wire Wire Line
 	9350 1500 9350 1350
@@ -2142,7 +2131,7 @@ Wire Wire Line
 Wire Wire Line
 	10150 6400 10050 6400
 Wire Wire Line
-	10200 5400 10200 5800
+	10200 5300 10200 5800
 Wire Wire Line
 	10500 6450 10600 6450
 Wire Wire Line
@@ -2591,7 +2580,7 @@ Wire Wire Line
 Wire Wire Line
 	8500 900  8350 900 
 Wire Wire Line
-	8350 1800 8350 900 
+	8350 900  8350 1800
 Wire Wire Line
 	7050 1800 7050 2700
 Wire Wire Line
@@ -2778,4 +2767,8 @@ Wire Wire Line
 Connection ~ 3600 3100
 Wire Wire Line
 	5000 7150 4700 7150
+Text GLabel 10350 5300 2    60   Input ~ 0
+POWFILT
+Wire Wire Line
+	10200 5300 10350 5300
 $EndSCHEMATC
