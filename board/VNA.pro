@@ -1,4 +1,4 @@
-update=1/24/2020 8:52:06 AM
+update=4/13/2020 10:32:15 AM
 version=1
 last_client=kicad
 [pcbnew]
@@ -64,6 +64,7 @@ LibName32=valves
 LibName33=bluepill
 LibName34=sa612
 LibName35=si5351a
+LibName36=microsd_spi_cd
 [schematic_editor]
 version=1
 PageLayoutDescrFile=

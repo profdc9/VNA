@@ -1,0 +1,150 @@
+### Module positions - created on 04/14/20 21:34:37 ###
+### Printed by Pcbnew version kicad 4.0.7
+## Unit = mm, Angle = deg.
+## Side : top
+# Ref     Val                 Package                                             PosX       PosY       Rot  Side
+C1        100 nF              C_0805_HandSoldering                            104.5616   -59.3344  270.0000  top
+C2        100 nF              C_0805_HandSoldering                             59.7600   -94.2300    0.0000  top
+C3        100 nF              C_0805_HandSoldering                            144.7800   -73.9140    0.0000  top
+C4        1000 uF             CP_Elec_8x10.5                                  144.7800   -80.5180    0.0000  top
+C5        100 nF              C_0805_HandSoldering                            145.0340   -59.1820    0.0000  top
+C6        100 nF              C_0805_HandSoldering                             64.2620   -75.4380   90.0000  top
+C7        1000 uF             CP_Elec_8x10.5                                  144.2720   -65.5320    0.0000  top
+C8        100 nF              C_0805_HandSoldering                             85.7656   -53.7464  180.0000  top
+C9        100 nF              C_0805_HandSoldering                             86.0196   -57.0484  180.0000  top
+C10       100 nF              C_0805_HandSoldering                             74.2500   -76.0000  180.0000  top
+C11       100 nF              C_0805_HandSoldering                             80.0100   -78.9940    0.0000  top
+C12       100 nF              C_0805_HandSoldering                            130.5600   -63.7900  180.0000  top
+C13       100 nF              C_0805_HandSoldering                            136.2354   -64.4906   90.0000  top
+C14       330 pF              C_0805_HandSoldering                             86.0450   -60.1726    0.0000  top
+C15       330 pF              C_0805_HandSoldering                             65.5320   -83.3120   90.0000  top
+C16       330 pF              C_0805_HandSoldering                            125.0950   -66.1670    0.0000  top
+C17       100 nF              C_0805_HandSoldering                             92.6236   -61.7474  180.0000  top
+C18       100 nF              C_0805_HandSoldering                             69.0880   -83.0580   90.0000  top
+C19       100 nF              C_0805_HandSoldering                            125.5928   -71.3994   90.0000  top
+C20       100 nF              C_0805_HandSoldering                            101.1961   -61.1886  270.0000  top
+C21       100 nF              C_0805_HandSoldering                             74.9910   -89.0168    0.0000  top
+C22       100 nF              C_0805_HandSoldering                             99.2276   -55.7784   90.0000  top
+C23       100 nF              C_0805_HandSoldering                             80.0100   -85.8393  180.0000  top
+C24       100 nF              C_0805_HandSoldering                            131.0640   -75.3110  270.0000  top
+C25       100 nF              C_0805_HandSoldering                            133.8072   -75.5904   90.0000  top
+C26       10 nF               C_0805_HandSoldering                             88.8136   -75.2094   90.0000  top
+C27       10 nF               C_0805_HandSoldering                             99.1032   -78.3158    0.0000  top
+C28       10 nF               C_0805_HandSoldering                            129.9489   -79.8830    0.0000  top
+C29       68 pF               C_0805_HandSoldering                             96.9467   -63.4594   90.0000  top
+C30       68 pF               C_0805_HandSoldering                             94.7572   -74.9300  270.0000  top
+C31       68 pF               C_0805_HandSoldering                            136.4259   -82.1690   90.0000  top
+C32       100 nF              C_0805_HandSoldering                             97.6528   -71.8058    0.0000  top
+C33       100 nF              C_0805_HandSoldering                            134.9502   -89.5756  270.0000  top
+C34       1 nF                C_0805_HandSoldering                            125.5000  -101.4500   90.0000  top
+C35       1 nF                C_0805_HandSoldering                            120.1500  -101.5500   90.0000  top
+C36       1 nF                C_0805_HandSoldering                            103.4500  -101.8500   90.0000  top
+C37       100 nF              C_0805_HandSoldering                            116.1186   -76.3295  180.0000  top
+C38       22 uF               C_1210_HandSoldering                             81.0260  -113.2840  180.0000  top
+C39       100 nF              C_0805_HandSoldering                             57.9120   -90.1700  270.0000  top
+C40       100 nF              C_0805_HandSoldering                            115.0620   -96.0120  180.0000  top
+C41       100 nF              C_0805_HandSoldering                            142.6500  -109.4600    0.0000  top
+C42       100 nF              C_0805_HandSoldering                             82.8040  -122.6820    0.0000  top
+C43       100 nF              C_0805_HandSoldering                             83.5660  -109.2200   90.0000  top
+C44       22 uF               C_1210_HandSoldering                             62.7380  -116.3320  180.0000  top
+C45       4.7 uF              CP_Elec_4x4.5                                    53.3400  -101.3460   90.0000  top
+C46       100 nF              C_0805_HandSoldering                             87.6706   -69.8754   90.0000  top
+C47       330 nF              C_1206_HandSoldering                             81.6000  -127.6000   90.0000  top
+C48       100 nF              C_0805_HandSoldering                             70.1040  -126.4920  180.0000  top
+C49       10 uF               CP_Elec_4x4.5                                    68.3260  -120.9040    0.0000  top
+C50       100 nF              C_0805_HandSoldering                             92.7100   -95.5040  180.0000  top
+C51       100 nF              C_0805_HandSoldering                             85.1900   -99.6200   90.0000  top
+C52       100 uF              CP_Elec_4x4.5                                    83.0580  -118.3640   90.0000  top
+C53       100 nF              C_0805_HandSoldering                            131.8600  -116.7000  180.0000  top
+D1        BAV99               SOT-23                                           68.8340   -58.6740   90.0000  top
+D2        BAV99               SOT-23                                          131.2100   -59.7100  180.0000  top
+D5        SS14                D_SMA                                            69.5960  -111.2520  270.0000  top
+D6        MMSZ5232B           D_SOD-123                                        68.8340  -117.0940  180.0000  top
+D7        LED                 LED_0805                                         57.6580  -124.2060   90.0000  top
+J2        Conn_Coaxial        Amphenol_RF_SMA_132289                           68.8340   -53.8480   90.0000  top
+J9        Conn_Coaxial        Amphenol_RF_SMA_132289                          128.0160   -53.8480   90.0000  top
+L1        Ferrite_Bead_Small  L_0805_HandSoldering                            144.8460   -86.8680    0.0000  top
+L2        Ferrite_Bead_Small  L_0805_HandSoldering                             58.6900   -96.5300    0.0000  top
+L3        Ferrite_Bead_Small  L_0805_HandSoldering                            102.2756   -55.7784  270.0000  top
+L4        Ferrite_Bead_Small  L_0805_HandSoldering                             85.8520   -82.2960   90.0000  top
+L5        Ferrite_Bead_Small  L_0805_HandSoldering                            136.2608   -75.6666  270.0000  top
+L6        Ferrite_Bead_Small  L_0805_HandSoldering                             94.2000   -98.0000  180.0000  top
+L9        10 uH               L_7.3x7.3_H4.5                                   76.4540  -120.3960    0.0000  top
+L10       10 uH               L_7.3x7.3_H4.5                                   63.2460  -109.9820  270.0000  top
+Q3        S9018               SOT-23                                           53.5940   -85.3440   90.0000  top
+R1        10k                 R_0805_HandSoldering                             67.5640   -94.9960   90.0000  top
+R2        10k                 R_0805_HandSoldering                             69.5960   -94.9960   90.0000  top
+R3        1k                  R_0805_HandSoldering                            144.8460   -71.8312  180.0000  top
+R4        680R                R_0805_HandSoldering                            125.7859   -88.4326  180.0000  top
+R5        220R                R_0805_HandSoldering                             72.5000   -67.2500  270.0000  top
+R6        5R1                 R_0805_HandSoldering                             74.2100   -72.2000    0.0000  top
+R7        10k                 R_0805_HandSoldering                            114.3406   -89.6874    0.0000  top
+R8        51R                 R_0805_HandSoldering                             75.2500   -67.2500   90.0000  top
+R9        1k5                 R_0805_HandSoldering                             80.6094   -92.7913    0.0000  top
+R10       10k                 R_0805_HandSoldering                            115.0620   -92.9640    0.0000  top
+R11       220R                R_0805_HandSoldering                             78.7500   -66.0000  270.0000  top
+R12       51R                 R_0805_HandSoldering                             82.0420   -60.9600  270.0000  top
+R13       5R1                 R_0805_HandSoldering                             81.7880   -55.6260   90.0000  top
+R14       51R                 R_0805_HandSoldering                             80.4672   -89.1286  180.0000  top
+R15       220R                R_0805_HandSoldering                             61.2140   -81.7880    0.0000  top
+R16       51R                 R_0805_HandSoldering                             58.6000   -85.1500  180.0000  top
+R17       4R7                 R_0805_HandSoldering                            125.7300   -60.1980   90.0000  top
+R18       47R                 R_0805_HandSoldering                            128.0500   -60.1800   90.0000  top
+R19       1k5                 R_0805_HandSoldering                             86.8070   -63.3730    0.0000  top
+R20       1k5                 R_0805_HandSoldering                             80.5180   -82.5500  180.0000  top
+R21       1k5                 R_0805_HandSoldering                            125.7198   -79.0042   90.0000  top
+R22       100k                R_0805_HandSoldering                             90.3884   -78.9940    0.0000  top
+R23       100k                R_0805_HandSoldering                             96.1034   -80.1624    0.0000  top
+R24       100k                R_0805_HandSoldering                            122.3416   -83.9470  270.0000  top
+R25       1k5                 R_0805_HandSoldering                             85.0544   -68.4784   90.0000  top
+R26       1k5                 R_0805_HandSoldering                             91.4806   -75.2094  270.0000  top
+R27       1k5                 R_0805_HandSoldering                            125.6944   -83.9978   90.0000  top
+R28       1k                  R_0805_HandSoldering                            103.2205   -89.9617  180.0000  top
+R29       1k                  R_0805_HandSoldering                            139.0193   -86.9290   90.0000  top
+R30       1k5                 R_0805_HandSoldering                            127.8500  -101.4000  270.0000  top
+R31       1k5                 R_0805_HandSoldering                            118.1000  -101.6500  270.0000  top
+R32       1k                  R_0805_HandSoldering                            103.1545   -93.4060  180.0000  top
+R33       1k5                 R_0805_HandSoldering                            106.6250  -101.9750  270.0000  top
+R34       1M                  R_0805_HandSoldering                            107.7163   -83.7133  180.0000  top
+R35       1M                  R_0805_HandSoldering                            109.3775   -79.9795   90.0000  top
+R36       10k                 R_0805_HandSoldering                            106.0704   -79.9592   90.0000  top
+R37       10k                 R_0805_HandSoldering                            110.2766   -76.5048  180.0000  top
+R38       10k                 R_0805_HandSoldering                             54.1020   -89.6620    0.0000  top
+R39       10k                 R_0805_HandSoldering                             54.1020   -93.2180  180.0000  top
+R40       100R                R_0805_HandSoldering                             55.8800   -81.7880    0.0000  top
+R41       1k                  R_0805_HandSoldering                            103.2154   -86.7156  180.0000  top
+R42       1k                  R_0805_HandSoldering                            143.5100   -94.4880    0.0000  top
+R43       1k5                 R_0805_HandSoldering                            102.6160   -71.1200  270.0000  top
+R44       51R                 R_0805_HandSoldering                            103.8860   -66.0400   90.0000  top
+R45       1k5                 R_0805_HandSoldering                            125.4760   -75.4380  180.0000  top
+R46       51R                 R_0805_HandSoldering                            128.9050   -75.3110  270.0000  top
+R47       22R                 R_0805_HandSoldering                            103.6500  -118.9500    0.0000  top
+R48       22R                 R_0805_HandSoldering                            108.7250  -118.9250  180.0000  top
+R49       NC                  R_0805_HandSoldering                             99.8100  -117.9000   90.0000  top
+R50       1k                  R_0805_HandSoldering                             73.9140  -109.9820  180.0000  top
+R51       270R                R_0805_HandSoldering                             73.9140  -107.9500    0.0000  top
+R52       1k                  R_0805_HandSoldering                             80.2640  -109.4740  270.0000  top
+R53       10k                 R_0805_HandSoldering                             76.7080  -113.2840  270.0000  top
+R54       10k                 R_0805_HandSoldering                             94.6500  -101.7500   90.0000  top
+R55       10k                 R_0805_HandSoldering                             68.3260  -124.4600  180.0000  top
+R56       10k                 R_0805_HandSoldering                             96.8000  -101.6500   90.0000  top
+R57       270R                R_0805_HandSoldering                             54.3560  -124.2060   90.0000  top
+R58       220R                R_0805_HandSoldering                             78.1400   -99.7100   90.0000  top
+R59       100R                R_0805_HandSoldering                             81.7200   -99.5900  270.0000  top
+R60       68R                 R_0805_HandSoldering                             83.5660   -95.5040    0.0000  top
+R61       100R                R_0805_HandSoldering                             54.3200   -72.8700  180.0000  top
+R62       100R                R_0805_HandSoldering                             54.3300   -69.4600  180.0000  top
+U1        SI5351A             MSOP-10_3x3mm_Pitch0.5mm                         64.2620   -93.2180   90.0000  top
+U2        LM339               SOIC-14_3.9x8.7mm_Pitch1.27mm                   115.2296   -82.4484    0.0000  top
+U3        SA612               SOIC-8_3.9x4.9mm_Pitch1.27mm                     93.3856   -56.5404    0.0000  top
+U4        SA612               SOIC-8_3.9x4.9mm_Pitch1.27mm                     74.1426   -83.1469  270.0000  top
+U5        SA612               SOIC-8_3.9x4.9mm_Pitch1.27mm                    130.6982   -68.6562  270.0000  top
+U6        LM358               SOIC-8_3.9x4.9mm_Pitch1.27mm                     92.1156   -68.4784  270.0000  top
+U7        LM358               SOIC-8_3.9x4.9mm_Pitch1.27mm                    131.1808   -85.1662  270.0000  top
+U8        AMS1117-3V3         SOT-223                                         145.0000  -100.3000   90.0000  top
+U9        78M05_TO252         TO-252-3_TabPin2                                 69.9400  -131.6300  180.0000  top
+U10       MT3608              SOT-23-6                                         73.4060  -113.0300    0.0000  top
+U11       CN3052              TI_SO-PowerPAD-8                                 61.7220  -123.4440   90.0000  top
+U12       SI5351A             MSOP-10_3x3mm_Pitch0.5mm                         88.3000   -98.1000   90.0000  top
+Y1        27 MHz              Crystal_SMD_3225-4pin_3.2x2.5mm_HandSoldering    68.0720  -100.8380  180.0000  top
+## End
