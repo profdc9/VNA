@@ -473,17 +473,6 @@ F 3 "" H 2850 2400 50  0001 C CNN
 	1    2850 2400
 	1    0    0    -1  
 $EndComp
-$Comp
-L R R8
-U 1 1 5BB20F66
-P 3100 1700
-F 0 "R8" V 3180 1700 50  0000 C CNN
-F 1 "51R" V 3100 1700 50  0000 C CNN
-F 2 "Resistors_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" V 3030 1700 50  0001 C CNN
-F 3 "" H 3100 1700 50  0001 C CNN
-	1    3100 1700
-	-1   0    0    1   
-$EndComp
 Text GLabel 3100 2100 3    60   Input ~ 0
 SAMPCUR
 $Comp
@@ -1722,10 +1711,9 @@ Wire Wire Line
 	3100 1550 3100 1050
 Wire Wire Line
 	2750 1550 3100 1550
-Connection ~ 3100 1900
 Connection ~ 2850 1900
 Wire Wire Line
-	3100 1850 3100 2100
+	3100 1900 3100 2100
 Wire Wire Line
 	2750 1900 3100 1900
 Wire Wire Line

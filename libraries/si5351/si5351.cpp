@@ -65,7 +65,7 @@ Si5351::Si5351(uint8_t i2c_addr, uint8_t which_si5351):
 
 #ifdef SI5351_SOFTWIRE
 SoftWire TWire1(PB6,PB7);
-SoftWire TWire2(PA4,PA5);
+SoftWire TWire2(PB10,PB11);
 #define TWire (*TWirePtr)
 #else
 #define TWire Wire
@@ -443,6 +443,18 @@ uint8_t Si5351::set_freq(uint64_t freq, enum si5351_clock clk)
 
 		return 0;
 	}
+}
+
+uint8_t Si5351::set_freq_xtal(enum si5351_clock clk)
+{
+  uint8_t reg_val;
+  const uint8_t mask = 0x0C;
+
+  output_enable(clk, 1);
+  si5351_write(SI5351_FANOUT_ENABLE, SI5351_XTAL_ENABLE);
+  reg_val = si5351_read(SI5351_CLK0_CTRL + (uint8_t)clk);
+  reg_val &= ~(mask);
+  si5351_write(SI5351_CLK0_CTRL + (uint8_t)clk, 0x03);
 }
 
 /*
