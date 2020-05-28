@@ -1,4 +1,4 @@
-update=4/23/2020 10:11:59 PM
+update=5/27/2020 11:05:55 PM
 version=1
 last_client=kicad
 [pcbnew]
@@ -68,6 +68,7 @@ LibName36=AMS1117-3V3
 LibName37=mt3608
 LibName38=cn3052
 LibName39=microsd_spi_cd
+LibName40=stm32f103c8t6
 [schematic_editor]
 version=1
 PageLayoutDescrFile=
