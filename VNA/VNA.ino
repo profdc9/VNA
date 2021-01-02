@@ -318,20 +318,20 @@ int setup_frequency_acquire(unsigned int frequency)
 void vna_initialize_si5351()
 {
 #ifdef SI5351_SINGLE
-  si5351.init(SI5351_CRYSTAL_LOAD_8PF, 27000000u, 0);
+  si5351.init(SI5351_CRYSTAL_LOAD_8PF, 25000000u, 0);
   si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_6MA);
   si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_6MA);
   si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
   si5351.set_ms_source(SI5351_CLK1, SI5351_PLLB);
 #else
-  si5351.init(SI5351_CRYSTAL_LOAD_8PF, 27000000u, 0);
+  si5351.init(SI5351_CRYSTAL_LOAD_8PF, 25000000u, 0);
   si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_6MA);
   si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_6MA);
   si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
   si5351.set_ms_source(SI5351_CLK1, SI5351_PLLB);
   si5351.set_ms_source(SI5351_CLK2, SI5351_PLLB);
-  si5351.set_freq(27000001ull * SI5351_FREQ_MULT, SI5351_CLK2);
-  si5351b.init(SI5351_CRYSTAL_LOAD_8PF, 27000000u, 0);
+  si5351.set_freq(25000001ull * SI5351_FREQ_MULT, SI5351_CLK2);
+  si5351b.init(SI5351_CRYSTAL_LOAD_8PF, 25000000u, 0);
   si5351b.drive_strength(SI5351_CLK0, SI5351_DRIVE_6MA);
   si5351b.set_ms_source(SI5351_CLK0, SI5351_PLLA);
 #endif
